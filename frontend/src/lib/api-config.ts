@@ -1,5 +1,5 @@
-// API Configuration - Uses environment variable or defaults to deployed backend
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://medai-backend.onrender.com'
+// API Configuration - Hardcoded deployed backend URL
+export const API_BASE_URL = 'https://medai-backend.onrender.com'
 
 // API Endpoints
 export const API_ENDPOINTS = {

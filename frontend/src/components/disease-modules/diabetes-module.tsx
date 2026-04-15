@@ -58,7 +58,10 @@ export default function DiabetesModule() {
     setError(null);
 
     try {
-      const response = await fetch(`${API_ENDPOINTS.diabetes}/predict`, {
+      const apiUrl = `${API_ENDPOINTS.diabetes}/predict`;
+      console.log('Calling API:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -75,11 +78,16 @@ export default function DiabetesModule() {
         }),
       });
 
+      console.log('Response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error("Prediction failed");
+        const errorText = await response.text();
+        console.error('API Error:', errorText);
+        throw new Error(`Prediction failed: ${response.status}`);
       }
 
       const predictionResult = await response.json();
+      console.log('Prediction result:', predictionResult);
       setResult(predictionResult);
 
       // Add prediction to current session
