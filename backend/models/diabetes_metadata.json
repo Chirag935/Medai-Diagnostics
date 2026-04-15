@@ -14,7 +14,7 @@
       37
     ]
   ],
-  "training_date": "2026-04-15T21:47:14.907351",
+  "training_date": "2026-04-16T01:08:36.758780",
   "model_type": "RandomForest",
   "class_weight": "balanced_subsample"
 }
