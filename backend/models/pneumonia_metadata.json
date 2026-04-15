@@ -1,17 +1,24 @@
 {
-  "accuracy": 1.0,
+  "accuracy": 0.9973504920514762,
   "precision": 1.0,
-  "recall": 1.0,
+  "recall": 0.9970768374164811,
+  "f1_score": 0.998536279361539,
   "confusion_matrix": [
     [
-      100,
+      742,
       0
     ],
     [
-      0,
-      100
+      21,
+      7163
     ]
   ],
-  "training_date": "2026-04-15T15:44:24.390892",
-  "n_features": 28
+  "training_date": "2026-04-16T02:13:19.784911",
+  "method": "augmented_ensemble",
+  "cv_scores": {
+    "accuracy": 0.9726214789502787,
+    "precision": 0.9787049727838102,
+    "recall": 0.9913698454882212,
+    "f1": 0.9849952325664141
+  }
 }

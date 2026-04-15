@@ -45,21 +45,21 @@ echo ✓ Clinical models retrained successfully (high accuracy)
 REM Always retrain image models (pneumonia and malaria)
 echo.
 echo ==========================================
-echo RETRAINING IMAGE MODELS
+echo RETRAINING IMAGE MODELS (AUGMENTED)
 echo ==========================================
 echo This will train: Pneumonia and Malaria detection
-echo Using real medical images from your Downloads folder
-echo This may take 3-5 minutes...
+echo Using: 7x data augmentation, enhanced features
+echo This may take 5-8 minutes...
 echo.
 cd backend
-python train_real_images_fixed.py
+python train_images_augmented.py
 if errorlevel 1 (
     echo ERROR: Image model training failed!
     pause
     exit /b 1
 )
 cd ..
-echo ✓ Image models retrained successfully
+echo ✓ Image models retrained successfully (high accuracy)
 
 REM Start Backend in new window
 echo.

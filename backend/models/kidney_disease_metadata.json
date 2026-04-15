@@ -1,16 +1,51 @@
 {
-  "accuracy": 0.8375,
-  "precision": 0.0,
-  "recall": 0.0,
+  "accuracy": 0.9975,
+  "precision": 0.9850746268656716,
+  "recall": 1.0,
+  "f1_score": 0.9924812030075187,
+  "roc_auc": 1.0,
+  "cv_scores": {
+    "accuracy": 0.9738409832684211,
+    "precision": 0.9862549493996386,
+    "recall": 0.9742424242424242,
+    "f1": 0.9801059667814722
+  },
   "confusion_matrix": [
     [
-      67,
-      0
+      333,
+      1
     ],
     [
-      13,
-      0
+      0,
+      66
     ]
   ],
-  "training_date": "2026-04-16T01:08:37.478211"
+  "features": [
+    "age",
+    "bp",
+    "sg",
+    "al",
+    "su",
+    "rbc",
+    "pc",
+    "pcc",
+    "ba",
+    "bgr",
+    "bu",
+    "sc",
+    "sod",
+    "pot",
+    "hemo",
+    "pcv",
+    "wc",
+    "rc",
+    "htn",
+    "dm",
+    "cad",
+    "appet",
+    "pe",
+    "ane"
+  ],
+  "training_date": "2026-04-16T02:01:44.198691",
+  "method": "augmented"
 }

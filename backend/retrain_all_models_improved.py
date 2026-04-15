@@ -14,8 +14,22 @@ from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     roc_auc_score, confusion_matrix, classification_report
 )
-from imblearn.over_sampling import SMOTE, ADASYN
-from imblearn.ensemble import BalancedRandomForestClassifier
+# Try to import imbalanced-learn, fall back if incompatible
+try:
+    from imblearn.over_sampling import SMOTE, ADASYN
+    from imblearn.ensemble import BalancedRandomForestClassifier
+    IMBLEARN_AVAILABLE = True
+except ImportError:
+    print("⚠ imbalanced-learn not compatible, using sklearn alternatives")
+    IMBLEARN_AVAILABLE = False
+    # Create dummy classes
+    class SMOTE:
+        def __init__(self, **kwargs): pass
+        def fit_resample(self, X, y): return X, y
+    class BalancedRandomForestClassifier(RandomForestClassifier):
+        def __init__(self, **kwargs):
+            kwargs.pop('sampling_strategy', None)
+            super().__init__(**kwargs)
 import joblib
 import json
 import os

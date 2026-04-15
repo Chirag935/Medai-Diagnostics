@@ -1,16 +1,39 @@
 {
-  "accuracy": 0.87,
-  "precision": 0.8,
-  "recall": 0.42105263157894735,
+  "accuracy": 1.0,
+  "precision": 1.0,
+  "recall": 1.0,
+  "f1_score": 1.0,
+  "roc_auc": 0.9999999999999999,
+  "cv_scores": {
+    "accuracy": 0.9798870769962846,
+    "precision": 0.9799196665184249,
+    "recall": 0.9895296260580736,
+    "f1": 0.9846877172836347
+  },
   "confusion_matrix": [
     [
-      158,
-      4
+      809,
+      0
     ],
     [
-      22,
-      16
+      0,
+      191
     ]
   ],
-  "training_date": "2026-04-16T01:08:38.232537"
+  "features": [
+    "age",
+    "gender",
+    "education_years",
+    "mmse_score",
+    "memory_complaints",
+    "behavioral_problems",
+    "adl_score",
+    "functional_assessment",
+    "brain_volume_ratio",
+    "cortical_thickness",
+    "csf_protein_level",
+    "hippocampal_atrophy"
+  ],
+  "training_date": "2026-04-16T02:01:56.237397",
+  "method": "augmented"
 }

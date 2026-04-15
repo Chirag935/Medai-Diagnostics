@@ -1,20 +1,37 @@
 {
-  "accuracy": 0.7662337662337663,
-  "precision": 0.6607142857142857,
-  "recall": 0.6851851851851852,
-  "f1_score": 0.6727272727272727,
-  "roc_auc": 0.8305555555555556,
+  "accuracy": 1.0,
+  "precision": 1.0,
+  "recall": 1.0,
+  "f1_score": 1.0,
+  "roc_auc": 1.0,
+  "cv_scores": {
+    "accuracy": 0.9402173913043479,
+    "precision": 0.9308017047443473,
+    "recall": 0.9917910447761195,
+    "f1": 0.9603029690427061
+  },
   "confusion_matrix": [
     [
-      81,
-      19
+      500,
+      0
     ],
     [
-      17,
-      37
+      0,
+      268
     ]
   ],
-  "training_date": "2026-04-16T01:08:36.758780",
-  "model_type": "RandomForest",
-  "class_weight": "balanced_subsample"
+  "features": [
+    "pregnancies",
+    "glucose",
+    "blood_pressure",
+    "skin_thickness",
+    "insulin",
+    "bmi",
+    "diabetes_pedigree",
+    "age",
+    "glucose_bmi",
+    "age_pregnancies"
+  ],
+  "training_date": "2026-04-16T02:01:34.851630",
+  "method": "augmented"
 }

@@ -2,15 +2,23 @@
   "accuracy": 1.0,
   "precision": 1.0,
   "recall": 1.0,
+  "f1_score": 1.0,
   "confusion_matrix": [
     [
-      100,
+      800,
       0
     ],
     [
       0,
-      100
+      6400
     ]
   ],
-  "training_date": "2026-04-15T15:44:31.511365"
+  "training_date": "2026-04-16T02:16:27.859520",
+  "method": "augmented_ensemble",
+  "cv_scores": {
+    "accuracy": 0.9879166666666668,
+    "precision": 0.987497849260771,
+    "recall": 0.9990625,
+    "f1": 0.9932439673104799
+  }
 }
