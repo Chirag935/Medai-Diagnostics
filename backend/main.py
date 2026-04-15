@@ -14,11 +14,12 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Configure CORS - allow all origins for deployed frontend
+# Configure CORS - FIXED: Allow all origins for Netlify frontend
+# CORS must have allow_credentials=False when using wildcard origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins
-    allow_credentials=False,  # Must be False when using wildcard
+    allow_origins=["*"],  # Allow all origins including Netlify
+    allow_credentials=False,  # Required to be False for wildcard
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
