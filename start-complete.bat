@@ -26,20 +26,21 @@ if errorlevel 1 (
 REM Always retrain clinical models (diabetes, heart, liver, kidney, breast cancer, alzheimer)
 echo.
 echo ==========================================
-echo RETRAINING ALL CLINICAL MODELS
+echo RETRAINING ALL CLINICAL MODELS (IMPROVED)
 echo ==========================================
 echo This will train: Diabetes, Heart Disease, Liver Disease,
 echo                  Kidney Disease, Breast Cancer, Alzheimer's
+echo Using: SMOTE, Balanced Random Forest, Ensemble methods
 echo.
 cd backend
-python retrain_all_models.py
+python retrain_all_models_improved.py
 if errorlevel 1 (
     echo ERROR: Clinical model training failed!
     pause
     exit /b 1
 )
 cd ..
-echo ✓ Clinical models retrained successfully
+echo ✓ Clinical models retrained successfully (high accuracy)
 
 REM Always retrain image models (pneumonia and malaria)
 echo.
