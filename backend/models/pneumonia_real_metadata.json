@@ -1,0 +1,22 @@
+{
+  "accuracy": 0.9466666666666667,
+  "precision": 0.9466666666666667,
+  "recall": 0.9466666666666667,
+  "confusion_matrix": [
+    [
+      142,
+      8
+    ],
+    [
+      8,
+      142
+    ]
+  ],
+  "training_date": "2026-04-15T17:26:37.778175",
+  "samples": 1500,
+  "normal_count": 750,
+  "pneumonia_count": 750,
+  "model_type": "GradientBoosting on Real X-Rays",
+  "n_features": 37,
+  "dataset_path": "C:\\Users\\asus\\Downloads\\Pneumonia\\chest_xray\\chest_xray"
+}
