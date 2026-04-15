@@ -63,7 +63,17 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "service": "MedAI Diagnostics API"}
+    return {"status": "healthy", "service": "MedAI Diagnostics API", "cors": "enabled"}
+
+@app.options("/{path:path}")
+async def handle_options(path: str):
+    """Handle CORS preflight requests"""
+    return {"message": "OK"}
+
+@app.get("/cors-test")
+async def cors_test():
+    """Test CORS is working"""
+    return {"cors": "working", "timestamp": "2024"}
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
