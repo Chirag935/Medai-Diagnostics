@@ -1,5 +1,5 @@
-// API Configuration - Hardcoded deployed backend URL
-export const API_BASE_URL = 'https://medai-backend.onrender.com'
+// API Configuration - Updated Render URL
+export const API_BASE_URL = 'https://medai-backend-v0hl.onrender.com'
 
 // API Endpoints
 export const API_ENDPOINTS = {
