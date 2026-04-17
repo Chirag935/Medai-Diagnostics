@@ -42,6 +42,10 @@ export default function PneumoniaPage() {
       })
 
       const result = await response.json()
+      if (!response.ok) {
+        console.error('API error:', result)
+        return
+      }
       setPrediction(result)
       
       // Add prediction to current session
@@ -142,7 +146,7 @@ export default function PneumoniaPage() {
                     </div>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-white font-semibold">Confidence:</span>
-                      <span className="text-white">{prediction.confidence.toFixed(1)}%</span>
+                      <span className="text-white">{(prediction.confidence ?? 0).toFixed(1)}%</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-white font-semibold">Risk Level:</span>
@@ -157,40 +161,18 @@ export default function PneumoniaPage() {
                     </div>
                   </div>
 
-                  {/* Modern Probability Gauges */}
-                  <div className="grid grid-cols-2 gap-6 mt-6">
-                    <div className="flex flex-col items-center">
-                      <ProbabilityGauge 
-                        value={prediction.normal_probability || 0}
-                        size="md"
-                        label="Normal"
-                        type="normal"
-                        animated={true}
-                      />
-                    </div>
-                    <div className="flex flex-col items-center">
-                      <ProbabilityGauge 
-                        value={prediction.pneumonia_probability || 0}
-                        size="md"
-                        label="Pneumonia"
-                        type="risk"
-                        animated={true}
-                      />
-                    </div>
-                  </div>
-
                   {/* AI Explanation Component */}
                   <div className="mt-8">
                     <AIExplanation 
                       disease="Pneumonia Detection"
                       prediction={prediction.prediction}
-                      confidence={prediction.confidence}
+                      confidence={prediction.confidence ?? 0}
                       riskLevel={prediction.risk_level}
                       explanation={prediction.explanation}
                       riskFactors={[
                         {
                           name: 'Opacity Patterns',
-                          impact: prediction.pneumonia_probability > 70 ? 'high' : prediction.pneumonia_probability > 40 ? 'medium' : 'low',
+                          impact: prediction.confidence > 70 ? 'high' : prediction.confidence > 40 ? 'medium' : 'low',
                           value: prediction.prediction.includes('Pneumonia') ? 'Detected' : 'Not Detected',
                           description: 'Lung opacities visible in X-ray indicate potential infection'
                         },

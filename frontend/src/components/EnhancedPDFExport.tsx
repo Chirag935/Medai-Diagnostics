@@ -1,57 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Download, FileText, Share2, QrCode, X, AlertCircle } from 'lucide-react'
+import { Download, FileText, X } from 'lucide-react'
 import { useToast } from '@/context/ToastContext'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 
-// QR Code generation helper
-const generateQRCodeSVG = (data: string): string => {
-  // Simple QR-like pattern generation for visualization
-  const size = 200;
-  const cells = 25;
-  const cellSize = size / cells;
-  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">`;
-  svg += `<rect width="${size}" height="${size}" fill="white"/>`;
-  
-  // Generate pseudo-random pattern based on data hash
-  let hash = 0;
-  for (let i = 0; i < data.length; i++) {
-    hash = ((hash << 5) - hash) + data.charCodeAt(i);
-    hash = hash & hash;
-  }
-  
-  const seededRandom = (seed: number) => {
-    const x = Math.sin(seed++) * 10000;
-    return x - Math.floor(x);
-  };
-  
-  let seed = Math.abs(hash);
-  
-  // Corner markers (typical QR pattern)
-  const drawMarker = (x: number, y: number) => {
-    svg += `<rect x="${x * cellSize}" y="${y * cellSize}" width="${7 * cellSize}" height="${7 * cellSize}" fill="black"/>`;
-    svg += `<rect x="${(x + 1) * cellSize}" y="${(y + 1) * cellSize}" width="${5 * cellSize}" height="${5 * cellSize}" fill="white"/>`;
-    svg += `<rect x="${(x + 2) * cellSize}" y="${(y + 2) * cellSize}" width="${3 * cellSize}" height="${3 * cellSize}" fill="black"/>`;
-  };
-  
-  drawMarker(0, 0);
-  drawMarker(cells - 7, 0);
-  drawMarker(0, cells - 7);
-  
-  // Data pattern
-  for (let i = 8; i < cells - 8; i++) {
-    for (let j = 8; j < cells - 8; j++) {
-      if (seededRandom(seed++) > 0.5) {
-        svg += `<rect x="${i * cellSize}" y="${j * cellSize}" width="${cellSize}" height="${cellSize}" fill="black"/>`;
-      }
-    }
-  }
-  
-  svg += '</svg>';
-  return svg;
-};
+
 
 interface PredictionRecord {
   disease: string
@@ -78,8 +33,6 @@ export default function EnhancedPDFExport({
   const { addToast } = useToast()
   const [showModal, setShowModal] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
-  const [showQRModal, setShowQRModal] = useState(false)
-  const [qrCodeSVG, setQRCodeSVG] = useState<string>('')
 
 
   // Disease-specific comprehensive analysis
@@ -780,48 +733,7 @@ export default function EnhancedPDFExport({
     }
   }
 
-  const generateShareableLink = () => {
-    // In a real app, this would generate a unique URL and save to backend
-    const mockLink = `https://medai.app/report/${Math.random().toString(36).substring(2, 15)}`
-    navigator.clipboard.writeText(mockLink)
-    addToast('Shareable link copied to clipboard!', 'success')
-  }
 
-  const generateQRCode = () => {
-    if (predictions.length === 0) {
-      addToast('Please make at least one prediction first', 'warning')
-      return
-    }
-    
-    // Generate shareable data
-    const shareData = {
-      patientId,
-      patientName,
-      reportDate: new Date().toLocaleDateString(),
-      predictions: predictions.map(p => ({
-        disease: p.disease,
-        prediction: p.prediction,
-        confidence: p.confidence
-      }))
-    }
-    
-    const dataString = JSON.stringify(shareData)
-    const svg = generateQRCodeSVG(dataString)
-    setQRCodeSVG(svg)
-    setShowQRModal(true)
-    addToast('QR Code generated! Scan to view report data', 'success')
-  }
-  
-  const downloadQRCode = () => {
-    const svgBlob = new Blob([qrCodeSVG], { type: 'image/svg+xml' })
-    const url = URL.createObjectURL(svgBlob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `medai-qr-${patientId}.svg`
-    a.click()
-    URL.revokeObjectURL(url)
-    addToast('QR Code downloaded!', 'success')
-  }
 
   // Render button based on predictions
   const hasPredictions = predictions.length > 0
@@ -850,43 +762,6 @@ export default function EnhancedPDFExport({
         <FileText className="w-5 h-5" />
         <span>Export Report ({predictions.length})</span>
       </button>
-
-      {showQRModal && (
-        <div className="fixed inset-0 bg-black/90 z-[9999] flex items-end sm:items-center justify-center p-6 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full p-8 shadow-2xl border-2 border-purple-500 mb-20 sm:mb-0">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Scan Report
-              </h2>
-              <button
-                onClick={() => setShowQRModal(false)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-              >
-                <X className="w-6 h-6 text-gray-500" />
-              </button>
-            </div>
-            
-            <div className="flex flex-col items-center space-y-6">
-              <div className="bg-white p-6 rounded-xl shadow-lg border-4 border-purple-200">
-                <div 
-                  className="bg-white"
-                  dangerouslySetInnerHTML={{ __html: qrCodeSVG }}
-                />
-              </div>
-              <p className="text-base text-gray-600 dark:text-gray-300 text-center font-medium">
-                Scan this QR code with your phone camera to view the report
-              </p>
-              <button
-                onClick={downloadQRCode}
-                className="w-full flex items-center justify-center gap-2 p-4 rounded-xl bg-purple-600 text-white font-semibold hover:bg-purple-700 transition-all shadow-lg"
-              >
-                <Download className="w-5 h-5" />
-                <span>Download QR Code</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {showModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9998] p-4">
@@ -928,28 +803,6 @@ export default function EnhancedPDFExport({
                 </div>
                 <div className="text-xs bg-white/20 px-2 py-1 rounded">
                   {predictions.length} predictions
-                </div>
-              </button>
-
-              <button
-                onClick={generateShareableLink}
-                className="w-full flex items-center gap-3 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all"
-              >
-                <Share2 className="w-5 h-5" />
-                <div className="text-left">
-                  <p className="font-semibold">Copy Shareable Link</p>
-                  <p className="text-sm opacity-70">Send to doctor or family</p>
-                </div>
-              </button>
-
-              <button
-                onClick={generateQRCode}
-                className="w-full flex items-center gap-3 p-4 rounded-xl bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-all"
-              >
-                <QrCode className="w-5 h-5" />
-                <div className="text-left">
-                  <p className="font-semibold">Generate QR Code</p>
-                  <p className="text-sm opacity-70">Scan to view on mobile</p>
                 </div>
               </button>
             </div>

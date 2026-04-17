@@ -9,10 +9,6 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
   },
-  // Disable eslint during build
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   // Disable typescript errors during build
   typescript: {
     ignoreBuildErrors: true,

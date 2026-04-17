@@ -1,5 +1,12 @@
-// API Configuration - Updated Render URL
-export const API_BASE_URL = 'https://medai-backend-v0hl.onrender.com'
+// API Configuration - Switch between local and cloud
+// Set NEXT_PUBLIC_API_URL in .env.local or use default
+const LOCAL_URL = "http://localhost:8000";
+const CLOUD_URL = "https://medai-backend-v0hl.onrender.com"; // Update after deployment
+
+// Use environment variable or default to local
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || LOCAL_URL;
+
+console.log("API Base URL:", API_BASE_URL);
 
 // API Endpoints
 export const API_ENDPOINTS = {
@@ -12,21 +19,21 @@ export const API_ENDPOINTS = {
   liverDisease: `${API_BASE_URL}/api/liver-disease`,
   alzheimer: `${API_BASE_URL}/api/alzheimer`,
   metrics: `${API_BASE_URL}/api/metrics`,
-}
+};
 
 // Helper function for API calls
 export async function apiFetch(endpoint: string, options?: RequestInit) {
   const response = await fetch(endpoint, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...options?.headers,
     },
-  })
-  
+  });
+
   if (!response.ok) {
-    throw new Error(`API Error: ${response.status}`)
+    throw new Error(`API Error: ${response.status}`);
   }
-  
-  return response.json()
+
+  return response.json();
 }

@@ -11,26 +11,23 @@ router = APIRouter()
 
 # Load the trained diabetes model and scaler
 def load_diabetes_model():
-    """Load the trained diabetes prediction model"""
-    model_path = "models/diabetes_model.pkl"
-    scaler_path = "models/diabetes_scaler.pkl"
+    """Load trained diabetes prediction model with fallbacks"""
+    model_options = [
+        ("models/diabetes_model.pkl", "models/diabetes_scaler.pkl"),
+    ]
     
-    if os.path.exists(model_path) and os.path.exists(scaler_path):
-        model = joblib.load(model_path)
-        scaler = joblib.load(scaler_path)
-        return model, scaler
-    else:
-        print("Diabetes model not found. Please run: python train_real_diabetes_model.py")
-        return DummyDiabetesModel(), None
-
-class DummyDiabetesModel:
-    """Fallback dummy model for demonstration"""
-    def predict_proba(self, X):
-        # Return dummy probabilities
-        return np.array([[0.3, 0.7]])  # [non_diabetic, diabetic]
+    for model_path, scaler_path in model_options:
+        if os.path.exists(model_path) and os.path.exists(scaler_path):
+            try:
+                model = joblib.load(model_path)
+                scaler = joblib.load(scaler_path)
+                print(f"✓ Diabetes model loaded: {model_path}")
+                return model, scaler
+            except Exception as e:
+                print(f"Error loading {model_path}: {e}")
+                continue
     
-    def predict(self, X):
-        return np.array([1])  # diabetic
+    raise RuntimeError("Diabetes model not found. Please train the model first.")
 
 def calculate_risk_level(probability: float) -> str:
     """Calculate risk level based on probability"""
@@ -171,7 +168,11 @@ async def predict_diabetes(request: DiabetesRequest):
     - **age**: Age (years)
     """
     try:
-        # Convert request to feature array
+        # Calculate engineered features (as trained)
+        glucose_bmi = request.glucose * request.bmi
+        age_bmi = request.age * request.bmi
+        
+        # Convert request to feature array (10 features as trained)
         features_array = np.array([[
             request.pregnancies,
             request.glucose,
@@ -180,7 +181,9 @@ async def predict_diabetes(request: DiabetesRequest):
             request.insulin,
             request.bmi,
             request.diabetes_pedigree,
-            request.age
+            request.age,
+            glucose_bmi,  # Engineered feature 1
+            age_bmi       # Engineered feature 2
         ]])
         
         # Load model and scaler
@@ -198,7 +201,12 @@ async def predict_diabetes(request: DiabetesRequest):
         diabetic_prob = probabilities[1] * 100
         
         # Determine prediction and risk level
-        prediction = "Diabetic" if diabetic_prob > non_diabetic_prob else "Non-Diabetic"
+        if diabetic_prob > non_diabetic_prob:
+            prediction = "Diabetic"
+        elif non_diabetic_prob > diabetic_prob:
+            prediction = "Non-Diabetic"
+        else:
+            prediction = "Uncertain"
         confidence = max(diabetic_prob, non_diabetic_prob)
         risk_level = calculate_risk_level(diabetic_prob)
         risk_tier = calculate_risk_tier(diabetic_prob)

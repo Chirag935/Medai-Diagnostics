@@ -29,6 +29,11 @@ class PneumoniaResponse(ImagePredictionResponse):
     normal_probability: float
     pneumonia_probability: float
     grad_cam_available: bool
+    model_accuracy: float = Field(0.0, description="Model accuracy on test set (0-1)")
+    model_precision: float = Field(0.0, description="Model precision (0-1)")
+    model_recall: float = Field(0.0, description="Model recall (0-1)")
+    model_f1_score: float = Field(0.0, description="Model F1-score (0-1)")
+    model_roc_auc: float = Field(0.0, description="Model ROC-AUC score (0-1)")
 
 class MalariaRequest(BaseModel):
     image: bytes
@@ -37,6 +42,11 @@ class MalariaResponse(ImagePredictionResponse):
     normal_probability: float
     infected_probability: float
     parasite_density: Optional[float] = None
+    model_accuracy: float = Field(0.0, description="Model accuracy on test set (0-1)")
+    model_precision: float = Field(0.0, description="Model precision (0-1)")
+    model_recall: float = Field(0.0, description="Model recall (0-1)")
+    model_f1_score: float = Field(0.0, description="Model F1-score (0-1)")
+    model_roc_auc: float = Field(0.0, description="Model ROC-AUC score (0-1)")
 
 class BreastCancerRequest(BaseModel):
     radius_mean: float
@@ -73,6 +83,11 @@ class BreastCancerRequest(BaseModel):
 class BreastCancerResponse(TabularPredictionResponse):
     malignant_probability: float
     benign_probability: float
+    model_accuracy: float = Field(0.0, description="Model accuracy on test set (0-1)")
+    model_precision: float = Field(0.0, description="Model precision (0-1)")
+    model_recall: float = Field(0.0, description="Model recall (0-1)")
+    model_f1_score: float = Field(0.0, description="Model F1-score (0-1)")
+    model_roc_auc: float = Field(0.0, description="Model ROC-AUC score (0-1)")
 
 class DiabetesRequest(BaseModel):
     pregnancies: float
@@ -95,14 +110,30 @@ class DiabetesResponse(TabularPredictionResponse):
     model_roc_auc: float = Field(..., description="Model ROC-AUC score (0-1)")
 
 class AlzheimerRequest(BaseModel):
-    image: bytes
+    age: float
+    gender: float
+    education_years: float
+    mmse_score: float
+    memory_complaints: float
+    behavioral_problems: float
+    adl_score: float
+    functional_assessment: float
+    brain_volume_ratio: float
+    cortical_thickness: float
+    csf_protein_level: float
+    hippocampal_atrophy: float
 
-class AlzheimerResponse(ImagePredictionResponse):
+class AlzheimerResponse(TabularPredictionResponse):
     non_demented_probability: float
     very_mild_probability: float
     mild_probability: float
     moderate_probability: float
     predicted_class: str
+    model_accuracy: float = Field(0.0, description="Model accuracy on test set (0-1)")
+    model_precision: float = Field(0.0, description="Model precision (0-1)")
+    model_recall: float = Field(0.0, description="Model recall (0-1)")
+    model_f1_score: float = Field(0.0, description="Model F1-score (0-1)")
+    model_roc_auc: float = Field(0.0, description="Model ROC-AUC score (0-1)")
 
 class LiverDiseaseRequest(BaseModel):
     age: float
@@ -119,6 +150,11 @@ class LiverDiseaseRequest(BaseModel):
 class LiverDiseaseResponse(TabularPredictionResponse):
     disease_probability: float
     healthy_probability: float
+    model_accuracy: float = Field(0.0, description="Model accuracy on test set (0-1)")
+    model_precision: float = Field(0.0, description="Model precision (0-1)")
+    model_recall: float = Field(0.0, description="Model recall (0-1)")
+    model_f1_score: float = Field(0.0, description="Model F1-score (0-1)")
+    model_roc_auc: float = Field(0.0, description="Model ROC-AUC score (0-1)")
 
 class KidneyDiseaseRequest(BaseModel):
     age: float
@@ -150,6 +186,11 @@ class KidneyDiseaseResponse(TabularPredictionResponse):
     ckd_probability: float
     no_ckd_probability: float
     ckd_stage: Optional[str] = None
+    model_accuracy: float = Field(0.0, description="Model accuracy on test set (0-1)")
+    model_precision: float = Field(0.0, description="Model precision (0-1)")
+    model_recall: float = Field(0.0, description="Model recall (0-1)")
+    model_f1_score: float = Field(0.0, description="Model F1-score (0-1)")
+    model_roc_auc: float = Field(0.0, description="Model ROC-AUC score (0-1)")
 
 class HeartDiseaseRequest(BaseModel):
     age: float
@@ -169,6 +210,11 @@ class HeartDiseaseRequest(BaseModel):
 class HeartDiseaseResponse(TabularPredictionResponse):
     disease_probability: float
     healthy_probability: float
+    model_accuracy: float = Field(0.0, description="Model accuracy on test set (0-1)")
+    model_precision: float = Field(0.0, description="Model precision (0-1)")
+    model_recall: float = Field(0.0, description="Model recall (0-1)")
+    model_f1_score: float = Field(0.0, description="Model F1-score (0-1)")
+    model_roc_auc: float = Field(0.0, description="Model ROC-AUC score (0-1)")
 
 # Metrics schemas
 class ModelMetrics(BaseModel):

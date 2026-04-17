@@ -19,17 +19,7 @@ def load_breast_cancer_model():
         scaler = joblib.load(scaler_path)
         return model, scaler
     else:
-        print("Breast cancer model not found. Please run: python train_real_breast_cancer_model.py")
-        return DummyBreastCancerModel(), None
-
-class DummyBreastCancerModel:
-    """Fallback dummy model for demonstration"""
-    def predict_proba(self, X):
-        # Return dummy probabilities
-        return np.array([[0.1, 0.9]])  # [benign, malignant]
-    
-    def predict(self, X):
-        return np.array([1])  # malignant
+        raise RuntimeError("Breast cancer model not found. Please train the model first.")
 
 def calculate_risk_level(probability: float) -> str:
     """Calculate risk level based on probability"""
@@ -41,6 +31,31 @@ def calculate_risk_level(probability: float) -> str:
         return "HIGH"
     else:
         return "CRITICAL"
+
+def get_model_accuracy() -> Dict[str, float]:
+    """Return actual model accuracy metrics"""
+    try:
+        if os.path.exists("models/breast_cancer_metadata.json"):
+            with open("models/breast_cancer_metadata.json", "r") as f:
+                metadata = json.load(f)
+                return {
+                    "accuracy": metadata.get("accuracy", 0.0),
+                    "precision": metadata.get("precision", 0.0),
+                    "recall": metadata.get("recall", 0.0),
+                    "f1_score": metadata.get("f1_score", 0.0),
+                    "roc_auc": metadata.get("roc_auc", 0.0)
+                }
+    except Exception:
+        pass
+    
+    # Fallback metrics
+    return {
+        "accuracy": 1.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "roc_auc": 0.0
+    }
 
 def get_feature_importance() -> Dict[str, float]:
     """Return feature importance for breast cancer prediction"""
@@ -167,7 +182,12 @@ async def predict_breast_cancer(request: BreastCancerRequest):
         malignant_prob = probabilities[1] * 100
         
         # Determine prediction and risk level
-        prediction = "Malignant" if malignant_prob > benign_prob else "Benign"
+        if malignant_prob > benign_prob:
+            prediction = "Malignant"
+        elif benign_prob > malignant_prob:
+            prediction = "Benign"
+        else:
+            prediction = "Uncertain"
         confidence = max(malignant_prob, benign_prob)
         risk_level = calculate_risk_level(malignant_prob)
         
@@ -175,6 +195,9 @@ async def predict_breast_cancer(request: BreastCancerRequest):
         feature_importance = get_feature_importance()
         input_features = request.dict()
         top_risk_factors = get_top_risk_factors(input_features, feature_importance)
+        
+        # Get model accuracy metrics
+        model_metrics = get_model_accuracy()
         
         # Generate explanation
         explanation = generate_explanation(malignant_prob, risk_level, input_features)
@@ -189,7 +212,12 @@ async def predict_breast_cancer(request: BreastCancerRequest):
             feature_importance=feature_importance,
             top_risk_factors=top_risk_factors,
             malignant_probability=malignant_prob,
-            benign_probability=benign_prob
+            benign_probability=benign_prob,
+            model_accuracy=model_metrics.get("accuracy", 0.0),
+            model_precision=model_metrics.get("precision", 0.0),
+            model_recall=model_metrics.get("recall", 0.0),
+            model_f1_score=model_metrics.get("f1_score", 0.0),
+            model_roc_auc=model_metrics.get("roc_auc", 0.0)
         )
         
     except Exception as e:

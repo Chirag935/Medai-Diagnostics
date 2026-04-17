@@ -4,7 +4,8 @@ from fastapi.staticfiles import StaticFiles
 import uvicorn
 import os
 
-from app.routers import pneumonia, malaria, breast_cancer, diabetes, alzheimer, liver_disease, kidney_disease, heart_disease, metrics
+from app.routers import malaria, pneumonia, breast_cancer, diabetes, alzheimer, liver_disease, kidney_disease, heart_disease, metrics
+from app.demo_values import DEMO_VALUES
 
 app = FastAPI(
     title="MedAI Diagnostics API",
@@ -75,5 +76,17 @@ async def cors_test():
     """Test CORS is working"""
     return {"cors": "working", "timestamp": "2024"}
 
+@app.get("/demo-values")
+async def get_demo_values():
+    """Get demo values for all diseases"""
+    return DEMO_VALUES
+
+@app.get("/demo-values/{disease}")
+async def get_demo_value(disease: str):
+    """Get demo values for specific disease"""
+    if disease in DEMO_VALUES:
+        return DEMO_VALUES[disease]
+    return {"error": "Disease not found"}
+
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False, workers=1)
