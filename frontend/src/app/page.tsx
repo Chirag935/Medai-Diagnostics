@@ -276,7 +276,7 @@ export default function HomePage() {
                       <span className="text-green-600 font-semibold">90.5%</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Alzheimer's:</span>
+                      <span className="text-gray-600">Alzheimer&apos;s:</span>
                       <span className="text-green-600 font-semibold">92.0%</span>
                     </div>
                   </div>

@@ -114,7 +114,7 @@ export default function AlzheimerPage() {
               <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
                 <Brain className="w-6 h-6 text-white" />
               </div>
-              <h1 className="text-2xl font-bold text-white">Alzheimer's Prediction</h1>
+              <h1 className="text-2xl font-bold text-white">Alzheimer&apos;s Prediction</h1>
             </div>
             <button 
               onClick={() => window.history.back()}
