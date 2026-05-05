@@ -5,11 +5,13 @@ __pycache__/
 .venv/
 .venv311/
 *.egg-info/
+*.db
 
 # Node
 node_modules/
 .next/
 out/
+dist/
 
 # Environment
 .env
@@ -27,3 +29,11 @@ Thumbs.db
 # Logs
 *.log
 retrain_log.txt
+
+# Build artifacts
+.netlify/
+frontend/.netlify/
+frontend/dist/
+
+# Models (generated at build time)
+models/mlops_feedback.db
