@@ -8,8 +8,9 @@ import traceback
 
 router = APIRouter()
 
-MODEL_PATH = "models/symptom_disease_model.pkl"
-META_PATH = "models/symptom_disease_metadata.json"
+MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "models")
+MODEL_PATH = os.path.join(MODELS_DIR, "symptom_disease_model.pkl")
+META_PATH = os.path.join(MODELS_DIR, "symptom_disease_metadata.json")
 
 class SymptomRequest(BaseModel):
     symptoms: list[str]
