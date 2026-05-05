@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Activity, Shield, Stethoscope, Search, Download, Camera, BarChart3, X, Bot, Cpu, Heart, Brain, Microscope, FileCheck, ChevronRight, Sparkles, Lock, Clock, Users } from 'lucide-react'
+import { Activity, Shield, Stethoscope, Search, Download, Camera, BarChart3, X, Bot, Cpu, Heart, Brain, Microscope, FileCheck, ChevronRight, Sparkles, Lock, Clock, Users, Globe, FileText, LogIn } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { API } from '@/lib/api-config'
+import { useLanguage } from '@/context/LanguageContext'
+import { useAuth } from '@/context/AuthContext'
 
 export default function HomePage() {
   const router = useRouter()
@@ -11,6 +13,8 @@ export default function HomePage() {
   const [metricsData, setMetricsData] = useState<any>(null)
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(false)
   const [activeStatIndex, setActiveStatIndex] = useState(0)
+  const { lang, setLang } = useLanguage()
+  const { isLoggedIn, doctor } = useAuth()
 
   // Animate stats counter
   useEffect(() => {
@@ -83,6 +87,26 @@ export default function HomePage() {
       shadow: 'shadow-emerald-500/20',
       stats: 'Real-Time',
     },
+    {
+      id: 'patients',
+      name: 'Patient Management',
+      icon: Users,
+      tag: 'EMR System',
+      description: 'Complete patient records, consultation history, and clinical data management with doctor authentication.',
+      gradient: 'from-amber-500 to-orange-500',
+      shadow: 'shadow-amber-500/20',
+      stats: 'Full EMR',
+    },
+    {
+      id: 'prescription',
+      name: 'Prescription Generator',
+      icon: FileText,
+      tag: 'PDF Export',
+      description: 'Generate professional prescriptions with medicine details, dosage, frequency, and clinic-branded PDF export.',
+      gradient: 'from-rose-500 to-red-500',
+      shadow: 'shadow-rose-500/20',
+      stats: 'Auto PDF',
+    },
   ]
 
   const platformStats = [
@@ -145,6 +169,14 @@ export default function HomePage() {
             </nav>
 
             <div className="flex items-center gap-3">
+              {/* Language Switcher */}
+              <button
+                onClick={() => setLang(lang === 'en' ? 'hi' : 'en')}
+                className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-all border border-white/5"
+              >
+                <Globe className="w-4 h-4 text-indigo-400" />
+                <span className="text-white">{lang === 'en' ? 'हिं' : 'EN'}</span>
+              </button>
               <button
                 onClick={fetchMetrics}
                 className="flex items-center gap-2 px-4 py-2.5 bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 rounded-xl text-sm font-semibold transition-all border border-teal-500/20 hover:border-teal-500/40"
@@ -152,9 +184,13 @@ export default function HomePage() {
                 <BarChart3 className="w-4 h-4" />
                 <span className="hidden sm:inline">System Metrics</span>
               </button>
-              <div className="w-9 h-9 bg-slate-800 rounded-xl flex items-center justify-center border border-white/5">
-                <Lock className="w-4 h-4 text-slate-500" />
-              </div>
+              <button
+                onClick={() => router.push(isLoggedIn ? '/patients' : '/login')}
+                className="flex items-center gap-2 px-4 py-2.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 rounded-xl text-sm font-semibold transition-all border border-purple-500/20 hover:border-purple-500/40"
+              >
+                <LogIn className="w-4 h-4" />
+                <span className="hidden sm:inline">{isLoggedIn ? doctor?.name?.split(' ')[0] : 'Doctor Login'}</span>
+              </button>
             </div>
           </div>
         </div>
@@ -242,10 +278,10 @@ export default function HomePage() {
               <p className="text-sm font-semibold text-teal-400 uppercase tracking-wider mb-2">Diagnostic Modules</p>
               <h3 className="text-3xl font-bold text-white">Choose Your Analysis</h3>
             </div>
-            <p className="text-sm text-slate-500 hidden md:block">4 AI-powered clinical modules</p>
+            <p className="text-sm text-slate-500 hidden md:block">6 AI-powered clinical modules</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {modules.map((module) => {
               const Icon = module.icon
               return (
