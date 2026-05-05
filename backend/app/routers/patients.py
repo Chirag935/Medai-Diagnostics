@@ -1,75 +1,32 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
-import sqlite3
 import os
 import hashlib
 import secrets
-import json
 from datetime import datetime
 
 router = APIRouter()
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "models", "patients.db")
+# --- Supabase Client ---
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 
-def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+_supabase_client = None
 
-def init_db():
-    conn = get_db()
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS doctors (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            specialization TEXT DEFAULT 'General Medicine',
-            clinic_name TEXT DEFAULT '',
-            token TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS patients (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            doctor_id INTEGER NOT NULL,
-            name TEXT NOT NULL,
-            age INTEGER,
-            gender TEXT,
-            phone TEXT,
-            blood_group TEXT,
-            allergies TEXT DEFAULT '',
-            medical_history TEXT DEFAULT '[]',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (doctor_id) REFERENCES doctors(id)
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS consultations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            patient_id INTEGER NOT NULL,
-            doctor_id INTEGER NOT NULL,
-            diagnosis TEXT NOT NULL,
-            symptoms TEXT DEFAULT '[]',
-            confidence REAL DEFAULT 0,
-            prescription TEXT DEFAULT '[]',
-            notes TEXT DEFAULT '',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (patient_id) REFERENCES patients(id),
-            FOREIGN KEY (doctor_id) REFERENCES doctors(id)
-        )
-    """)
-    conn.commit()
-    conn.close()
-
-init_db()
+def get_supabase():
+    global _supabase_client
+    if _supabase_client is None:
+        if not SUPABASE_URL or not SUPABASE_KEY:
+            raise HTTPException(status_code=500, detail="Supabase not configured. Set SUPABASE_URL and SUPABASE_KEY in backend/.env")
+        from supabase import create_client
+        _supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    return _supabase_client
 
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
-# --- Auth Models ---
+# --- Models ---
 class RegisterRequest(BaseModel):
     name: str
     email: str
@@ -100,38 +57,42 @@ class ConsultationCreate(BaseModel):
 # --- Auth Endpoints ---
 @router.post("/register")
 async def register(req: RegisterRequest):
-    conn = get_db()
-    try:
-        token = secrets.token_hex(32)
-        conn.execute(
-            "INSERT INTO doctors (name, email, password_hash, specialization, clinic_name, token) VALUES (?, ?, ?, ?, ?, ?)",
-            (req.name, req.email, hash_password(req.password), req.specialization, req.clinic_name, token)
-        )
-        conn.commit()
-        return {"token": token, "name": req.name, "email": req.email}
-    except sqlite3.IntegrityError:
+    sb = get_supabase()
+    
+    # Check if email already exists
+    existing = sb.table("doctors").select("id").eq("email", req.email).execute()
+    if existing.data:
         raise HTTPException(status_code=400, detail="Email already registered")
-    finally:
-        conn.close()
+    
+    token = secrets.token_hex(32)
+    result = sb.table("doctors").insert({
+        "name": req.name,
+        "email": req.email,
+        "password_hash": hash_password(req.password),
+        "specialization": req.specialization,
+        "clinic_name": req.clinic_name,
+        "token": token,
+    }).execute()
+    
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Registration failed")
+    
+    return {"token": token, "name": req.name, "email": req.email}
 
 @router.post("/login")
 async def login(req: LoginRequest):
-    conn = get_db()
-    doctor = conn.execute(
-        "SELECT * FROM doctors WHERE email = ? AND password_hash = ?",
-        (req.email, hash_password(req.password))
-    ).fetchone()
-    conn.close()
+    sb = get_supabase()
     
-    if not doctor:
+    result = sb.table("doctors").select("*").eq("email", req.email).eq("password_hash", hash_password(req.password)).execute()
+    
+    if not result.data:
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
-    # Generate new token
+    doctor = result.data[0]
     token = secrets.token_hex(32)
-    conn = get_db()
-    conn.execute("UPDATE doctors SET token = ? WHERE id = ?", (token, doctor["id"]))
-    conn.commit()
-    conn.close()
+    
+    # Update token
+    sb.table("doctors").update({"token": token}).eq("id", doctor["id"]).execute()
     
     return {
         "token": token,
@@ -146,11 +107,11 @@ async def login(req: LoginRequest):
 
 @router.get("/me")
 async def get_profile(token: str):
-    conn = get_db()
-    doctor = conn.execute("SELECT * FROM doctors WHERE token = ?", (token,)).fetchone()
-    conn.close()
-    if not doctor:
+    sb = get_supabase()
+    result = sb.table("doctors").select("*").eq("token", token).execute()
+    if not result.data:
         raise HTTPException(status_code=401, detail="Invalid token")
+    doctor = result.data[0]
     return {
         "id": doctor["id"],
         "name": doctor["name"],
@@ -159,101 +120,92 @@ async def get_profile(token: str):
         "clinic_name": doctor["clinic_name"],
     }
 
+# --- Helper: get doctor from token ---
+def _get_doctor_id(sb, token: str) -> int:
+    result = sb.table("doctors").select("id").eq("token", token).execute()
+    if not result.data:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    return result.data[0]["id"]
+
 # --- Patient Endpoints ---
 @router.post("/patients")
 async def create_patient(patient: PatientCreate, token: str):
-    conn = get_db()
-    doctor = conn.execute("SELECT id FROM doctors WHERE token = ?", (token,)).fetchone()
-    if not doctor:
-        conn.close()
-        raise HTTPException(status_code=401, detail="Invalid token")
+    sb = get_supabase()
+    doctor_id = _get_doctor_id(sb, token)
     
-    cursor = conn.execute(
-        "INSERT INTO patients (doctor_id, name, age, gender, phone, blood_group, allergies) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (doctor["id"], patient.name, patient.age, patient.gender, patient.phone, patient.blood_group, patient.allergies)
-    )
-    conn.commit()
-    patient_id = cursor.lastrowid
-    conn.close()
-    return {"id": patient_id, "message": "Patient created successfully"}
+    result = sb.table("patients").insert({
+        "doctor_id": doctor_id,
+        "name": patient.name,
+        "age": patient.age,
+        "gender": patient.gender,
+        "phone": patient.phone,
+        "blood_group": patient.blood_group,
+        "allergies": patient.allergies or "",
+    }).execute()
+    
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Failed to create patient")
+    
+    return {"id": result.data[0]["id"], "message": "Patient created successfully"}
 
 @router.get("/patients")
 async def list_patients(token: str):
-    conn = get_db()
-    doctor = conn.execute("SELECT id FROM doctors WHERE token = ?", (token,)).fetchone()
-    if not doctor:
-        conn.close()
-        raise HTTPException(status_code=401, detail="Invalid token")
+    sb = get_supabase()
+    doctor_id = _get_doctor_id(sb, token)
     
-    patients = conn.execute(
-        "SELECT * FROM patients WHERE doctor_id = ? ORDER BY created_at DESC", (doctor["id"],)
-    ).fetchall()
-    conn.close()
-    
-    return [dict(p) for p in patients]
+    result = sb.table("patients").select("*").eq("doctor_id", doctor_id).order("created_at", desc=True).execute()
+    return result.data
 
 @router.get("/patients/{patient_id}")
 async def get_patient(patient_id: int, token: str):
-    conn = get_db()
-    doctor = conn.execute("SELECT id FROM doctors WHERE token = ?", (token,)).fetchone()
-    if not doctor:
-        conn.close()
-        raise HTTPException(status_code=401, detail="Invalid token")
+    sb = get_supabase()
+    doctor_id = _get_doctor_id(sb, token)
     
-    patient = conn.execute(
-        "SELECT * FROM patients WHERE id = ? AND doctor_id = ?", (patient_id, doctor["id"])
-    ).fetchone()
-    
-    if not patient:
-        conn.close()
+    patient = sb.table("patients").select("*").eq("id", patient_id).eq("doctor_id", doctor_id).execute()
+    if not patient.data:
         raise HTTPException(status_code=404, detail="Patient not found")
     
-    consultations = conn.execute(
-        "SELECT * FROM consultations WHERE patient_id = ? ORDER BY created_at DESC", (patient_id,)
-    ).fetchall()
-    conn.close()
+    consultations = sb.table("consultations").select("*").eq("patient_id", patient_id).order("created_at", desc=True).execute()
     
     return {
-        **dict(patient),
-        "consultations": [dict(c) for c in consultations]
+        **patient.data[0],
+        "consultations": consultations.data
     }
 
 # --- Consultation Endpoints ---
 @router.post("/consultations")
 async def create_consultation(consult: ConsultationCreate, token: str):
-    conn = get_db()
-    doctor = conn.execute("SELECT id FROM doctors WHERE token = ?", (token,)).fetchone()
-    if not doctor:
-        conn.close()
-        raise HTTPException(status_code=401, detail="Invalid token")
+    sb = get_supabase()
+    doctor_id = _get_doctor_id(sb, token)
     
-    cursor = conn.execute(
-        "INSERT INTO consultations (patient_id, doctor_id, diagnosis, symptoms, confidence, prescription, notes) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (consult.patient_id, doctor["id"], consult.diagnosis, json.dumps(consult.symptoms),
-         consult.confidence, json.dumps(consult.prescription), consult.notes)
-    )
-    conn.commit()
-    consultation_id = cursor.lastrowid
-    conn.close()
-    return {"id": consultation_id, "message": "Consultation recorded"}
+    result = sb.table("consultations").insert({
+        "patient_id": consult.patient_id,
+        "doctor_id": doctor_id,
+        "diagnosis": consult.diagnosis,
+        "symptoms": consult.symptoms,
+        "confidence": consult.confidence,
+        "prescription": consult.prescription,
+        "notes": consult.notes,
+    }).execute()
+    
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Failed to record consultation")
+    
+    return {"id": result.data[0]["id"], "message": "Consultation recorded"}
 
 @router.get("/stats")
 async def get_stats(token: str):
-    conn = get_db()
-    doctor = conn.execute("SELECT id FROM doctors WHERE token = ?", (token,)).fetchone()
-    if not doctor:
-        conn.close()
-        raise HTTPException(status_code=401, detail="Invalid token")
+    sb = get_supabase()
+    doctor_id = _get_doctor_id(sb, token)
     
-    patient_count = conn.execute("SELECT COUNT(*) FROM patients WHERE doctor_id = ?", (doctor["id"],)).fetchone()[0]
-    consultation_count = conn.execute("SELECT COUNT(*) FROM consultations WHERE doctor_id = ?", (doctor["id"],)).fetchone()[0]
-    today_count = conn.execute(
-        "SELECT COUNT(*) FROM consultations WHERE doctor_id = ? AND DATE(created_at) = DATE('now')", (doctor["id"],)
-    ).fetchone()[0]
-    conn.close()
+    patients = sb.table("patients").select("id", count="exact").eq("doctor_id", doctor_id).execute()
+    consultations = sb.table("consultations").select("id", count="exact").eq("doctor_id", doctor_id).execute()
+    
+    today = datetime.now().strftime("%Y-%m-%d")
+    today_consults = sb.table("consultations").select("id", count="exact").eq("doctor_id", doctor_id).gte("created_at", f"{today}T00:00:00").execute()
     
     return {
-        "total_patients": patient_count,
-        "total_consultations": consultation_count,
-        "today_consultations": today_count,
+        "total_patients": patients.count or 0,
+        "total_consultations": consultations.count or 0,
+        "today_consultations": today_consults.count or 0,
     }
