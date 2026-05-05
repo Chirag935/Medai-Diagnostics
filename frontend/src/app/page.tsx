@@ -49,60 +49,60 @@ export default function HomePage() {
   const modules = [
     {
       id: 'symptom-checker',
-      name: 'Symptom Triage Engine',
+      name: t('mod.symptom.name'),
       icon: Search,
       tag: '3D Body Map',
-      description: 'Interactive 3D anatomical body map with AI-powered symptom correlation across 40+ clinical conditions.',
+      description: t('mod.symptom.desc'),
       gradient: 'from-teal-500 to-cyan-500',
       shadow: 'shadow-teal-500/20',
       stats: '40+ Conditions',
     },
     {
       id: 'skin-analyzer',
-      name: 'Dermatology AI Scanner',
+      name: t('mod.skin.name'),
       icon: Microscope,
       tag: 'XAI Heatmaps',
-      description: 'Computer vision skin analysis with Explainable AI saliency maps showing diagnostic attention regions.',
+      description: t('mod.skin.desc'),
       gradient: 'from-indigo-500 to-violet-500',
       shadow: 'shadow-indigo-500/20',
       stats: 'Grad-CAM XAI',
     },
     {
       id: 'ai-assistant',
-      name: 'Clinical AI Consultant',
+      name: t('mod.ai.name'),
       icon: Bot,
       tag: 'RAG + LLM',
-      description: 'Context-aware medical Q&A powered by Llama 3 with Retrieval-Augmented Generation from your diagnostic session.',
+      description: t('mod.ai.desc'),
       gradient: 'from-purple-500 to-pink-500',
       shadow: 'shadow-purple-500/20',
       stats: 'Llama 3 70B',
     },
     {
       id: 'mlops-dashboard',
-      name: 'MLOps Control Center',
+      name: t('mod.mlops.name'),
       icon: Cpu,
       tag: 'Live Metrics',
-      description: 'Production-grade model monitoring with data drift detection, feedback loops, and continuous learning pipeline visualization.',
+      description: t('mod.mlops.desc'),
       gradient: 'from-emerald-500 to-teal-500',
       shadow: 'shadow-emerald-500/20',
       stats: 'Real-Time',
     },
     {
       id: 'patients',
-      name: 'Patient Management',
+      name: t('mod.patient.name'),
       icon: Users,
       tag: 'EMR System',
-      description: 'Complete patient records, consultation history, and clinical data management with doctor authentication.',
+      description: t('mod.patient.desc'),
       gradient: 'from-amber-500 to-orange-500',
       shadow: 'shadow-amber-500/20',
       stats: 'Full EMR',
     },
     {
       id: 'prescription',
-      name: 'Prescription Generator',
+      name: t('mod.rx.name'),
       icon: FileText,
       tag: 'PDF Export',
-      description: 'Generate professional prescriptions with medicine details, dosage, frequency, and clinic-branded PDF export.',
+      description: t('mod.rx.desc'),
       gradient: 'from-rose-500 to-red-500',
       shadow: 'shadow-rose-500/20',
       stats: 'Auto PDF',
@@ -110,10 +110,10 @@ export default function HomePage() {
   ]
 
   const platformStats = [
-    { value: '99.1%', label: 'Symptom Model Accuracy', icon: Brain },
-    { value: '88.3%', label: 'Skin CV Engine Accuracy', icon: Microscope },
-    { value: '40+', label: 'Diagnosable Conditions', icon: Heart },
-    { value: '<2s', label: 'Average Response Time', icon: Clock },
+    { value: '99.1%', label: t('stat.symptomAcc'), icon: Brain },
+    { value: '88.3%', label: t('stat.skinAcc'), icon: Microscope },
+    { value: '40+', label: t('stat.conditions'), icon: Heart },
+    { value: '<2s', label: t('stat.responseTime'), icon: Clock },
   ]
 
   return (
@@ -142,7 +142,7 @@ export default function HomePage() {
                   MedAI <span className="text-teal-400">Diagnostics</span>
                 </h1>
                 <p className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-medium">
-                  AI-Powered Clinical Intelligence
+                  {t('nav.tagline')}
                 </p>
               </div>
             </div>
@@ -152,19 +152,19 @@ export default function HomePage() {
                 onClick={() => document.getElementById('modules-section')?.scrollIntoView({ behavior: 'smooth' })}
                 className="px-4 py-2 text-sm text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-all font-medium"
               >
-                Modules
+                {t('nav.modules')}
               </button>
               <button
                 onClick={fetchMetrics}
                 className="px-4 py-2 text-sm text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-all font-medium"
               >
-                Accuracy
+                {t('nav.accuracy')}
               </button>
               <button
                 onClick={() => document.getElementById('tech-section')?.scrollIntoView({ behavior: 'smooth' })}
                 className="px-4 py-2 text-sm text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-all font-medium"
               >
-                Technology
+                {t('nav.technology')}
               </button>
             </nav>
 
@@ -182,14 +182,14 @@ export default function HomePage() {
                 className="flex items-center gap-2 px-4 py-2.5 bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 rounded-xl text-sm font-semibold transition-all border border-teal-500/20 hover:border-teal-500/40"
               >
                 <BarChart3 className="w-4 h-4" />
-                <span className="hidden sm:inline">System Metrics</span>
+                <span className="hidden sm:inline">{t('nav.accuracy')}</span>
               </button>
               <button
                 onClick={() => router.push(isLoggedIn ? '/patients' : '/login')}
                 className="flex items-center gap-2 px-4 py-2.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 rounded-xl text-sm font-semibold transition-all border border-purple-500/20 hover:border-purple-500/40"
               >
                 <LogIn className="w-4 h-4" />
-                <span className="hidden sm:inline">{isLoggedIn ? doctor?.name?.split(' ')[0] : 'Doctor Login'}</span>
+                <span className="hidden sm:inline">{isLoggedIn ? doctor?.name?.split(' ')[0] : t('nav.login')}</span>
               </button>
             </div>
           </div>
@@ -203,21 +203,19 @@ export default function HomePage() {
             {/* Status Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-teal-500/20 bg-teal-500/5 mb-8 animate-fadeIn">
               <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-              <span className="text-sm text-teal-300 font-medium">All Systems Operational</span>
+              <span className="text-sm text-teal-300 font-medium">{t('hero.badge')}</span>
               <span className="text-slate-600">|</span>
               <span className="text-xs text-slate-400">v2.0 — Powered by OpenCV + Llama 3</span>
             </div>
 
             <h2 className="text-5xl md:text-[3.5rem] font-extrabold text-white mb-6 leading-[1.15] tracking-tight">
-              Clinical-Grade AI <br/>
+              {t('hero.title1')} <br/>
               <span className="bg-gradient-to-r from-teal-400 via-cyan-400 to-indigo-400 bg-clip-text text-transparent">
-                Diagnostic Intelligence
+                {t('hero.title2')}
               </span>
             </h2>
 
-            <p className="text-lg text-slate-400 mb-10 leading-relaxed max-w-2xl">
-              A multimodal medical triage platform combining <strong className="text-slate-300">Computer Vision</strong>, <strong className="text-slate-300">Random Forest classifiers</strong>, <strong className="text-slate-300">Explainable AI</strong>, and <strong className="text-slate-300">Large Language Models</strong> to deliver instant, transparent diagnostic assessments.
-            </p>
+            <p className="text-lg text-slate-400 mb-10 leading-relaxed max-w-2xl" dangerouslySetInnerHTML={{ __html: t('hero.desc') }} />
 
             {/* CTA Buttons */}
             <div className="flex flex-wrap gap-4 mb-16">
@@ -226,7 +224,7 @@ export default function HomePage() {
                 className="group flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-teal-500 to-cyan-500 text-white rounded-2xl font-bold text-base hover:shadow-2xl hover:shadow-teal-500/30 transition-all hover:-translate-y-0.5"
               >
                 <Activity className="w-5 h-5" />
-                Start Diagnosis
+                {t('hero.startDiagnosis')}
                 <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>
               <button
@@ -234,7 +232,7 @@ export default function HomePage() {
                 className="flex items-center gap-3 px-8 py-4 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-bold text-base border border-white/10 hover:border-white/20 transition-all"
               >
                 <Microscope className="w-5 h-5 text-indigo-400" />
-                Scan Skin Condition
+                {t('hero.scanSkin')}
               </button>
             </div>
           </div>
@@ -275,10 +273,10 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-6 py-20">
           <div className="flex items-end justify-between mb-12">
             <div>
-              <p className="text-sm font-semibold text-teal-400 uppercase tracking-wider mb-2">Diagnostic Modules</p>
-              <h3 className="text-3xl font-bold text-white">Choose Your Analysis</h3>
+              <p className="text-sm font-semibold text-teal-400 uppercase tracking-wider mb-2">{t('modules.subtitle')}</p>
+              <h3 className="text-3xl font-bold text-white">{t('modules.title')}</h3>
             </div>
-            <p className="text-sm text-slate-500 hidden md:block">6 AI-powered clinical modules</p>
+            <p className="text-sm text-slate-500 hidden md:block">{t('modules.count')}</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -315,7 +313,7 @@ export default function HomePage() {
                       {module.stats}
                     </span>
                     <div className="flex items-center gap-1.5 text-teal-400 text-sm font-semibold group-hover:translate-x-1 transition-transform">
-                      Launch
+                      {t('modules.launch')}
                       <ChevronRight className="w-4 h-4" />
                     </div>
                   </div>
@@ -330,8 +328,8 @@ export default function HomePage() {
       <section id="tech-section" className="border-t border-white/[0.06]">
         <div className="max-w-7xl mx-auto px-6 py-20">
           <div className="text-center mb-14">
-            <p className="text-sm font-semibold text-indigo-400 uppercase tracking-wider mb-2">Technology Stack</p>
-            <h3 className="text-3xl font-bold text-white">Built With Production-Grade AI</h3>
+            <p className="text-sm font-semibold text-indigo-400 uppercase tracking-wider mb-2">{t('tech.title')}</p>
+            <h3 className="text-3xl font-bold text-white">{t('tech.subtitle')}</h3>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">

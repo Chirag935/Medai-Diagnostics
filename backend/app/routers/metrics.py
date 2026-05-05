@@ -5,14 +5,16 @@ from typing import Dict, Any
 
 router = APIRouter()
 
+MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "models")
+
 DISEASE_CONFIG = {
     "symptoms": {
         "name": "General Symptom Predictor (Random Forest)",
-        "meta": "models/symptom_disease_metadata.json",
+        "meta": os.path.join(MODELS_DIR, "symptom_disease_metadata.json"),
     },
     "skin": {
         "name": "Skin Infection Classifier (CNN)",
-        "meta": "models/skin_disease_metadata.json",
+        "meta": os.path.join(MODELS_DIR, "skin_disease_metadata.json"),
     }
 }
 
