@@ -14,7 +14,7 @@ export default function HomePage() {
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(false)
   const [activeStatIndex, setActiveStatIndex] = useState(0)
   const { lang, setLang, t } = useLanguage()
-  const { isLoggedIn, user, role, hasAccess, logout } = useAuth()
+  const { isLoggedIn, user, role, hasAccess, logout, isLoaded } = useAuth()
 
   // Animate stats counter
   useEffect(() => {
@@ -23,6 +23,12 @@ export default function HomePage() {
     }, 3000)
     return () => clearInterval(interval)
   }, [])
+
+  useEffect(() => {
+    if (isLoaded && !isLoggedIn) {
+      router.push('/login')
+    }
+  }, [isLoaded, isLoggedIn, router])
 
   const fetchMetrics = async () => {
     setShowMetrics(true)
@@ -130,6 +136,14 @@ export default function HomePage() {
     { value: '40+', label: t('stat.conditions'), icon: Heart },
     { value: '<2s', label: t('stat.responseTime'), icon: Clock },
   ]
+
+  if (!isLoaded || !isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-[#050a18] flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-teal-500/20 border-t-teal-500 rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-[#050a18]">

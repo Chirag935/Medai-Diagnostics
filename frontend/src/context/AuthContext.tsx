@@ -35,6 +35,7 @@ interface AuthContextType {
   register: (data: any) => Promise<void>
   logout: () => void
   hasAccess: (module: string) => boolean
+  isLoaded: boolean
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -47,11 +48,13 @@ const AuthContext = createContext<AuthContextType>({
   register: async () => {},
   logout: () => {},
   hasAccess: () => false,
+  isLoaded: false,
 })
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState<string | null>(null)
+  const [isLoaded, setIsLoaded] = useState(false)
 
   useEffect(() => {
     const savedToken = localStorage.getItem('medai_token')
@@ -60,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(savedToken)
       setUser(JSON.parse(savedUser))
     }
+    setIsLoaded(true)
   }, [])
 
   const login = async (email: string, password: string) => {
@@ -136,6 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       doctor: user,  // backward compat
       token,
       isLoggedIn: !!token,
+      isLoaded,
       role: user?.role || null,
       login,
       register,
