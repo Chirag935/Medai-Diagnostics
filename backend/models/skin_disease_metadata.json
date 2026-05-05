@@ -1,0 +1,14 @@
+{
+    "classes": [
+        "Acne / Rosacea",
+        "Melanoma / Pigmentation",
+        "Normal Skin",
+        "Eczema / Dermatitis"
+    ],
+    "input_shape": [
+        224,
+        224,
+        3
+    ],
+    "accuracy": 0.883
+}

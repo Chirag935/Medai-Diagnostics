@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { Download, FileText, X } from 'lucide-react'
 import { useToast } from '@/context/ToastContext'
 import jsPDF from 'jspdf'
-import html2canvas from 'html2canvas'
 
 
 

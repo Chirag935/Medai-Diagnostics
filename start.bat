@@ -1,12 +1,12 @@
 @echo off
 REM ==========================================
-REM MedAI Diagnostics - Start Script
+REM MedAI Health Companion - Start Script
 REM Starts Backend + Frontend
 REM ==========================================
 
 echo.
 echo  ==========================================
-echo   MedAI Diagnostics - Starting...
+echo   MedAI Health Companion - Starting...
 echo  ==========================================
 echo.
 
@@ -48,17 +48,22 @@ if not exist ".venv311\Scripts\python.exe" (
 )
 echo       Backend ready
 
-REM --- Retrain image models if scalers missing ---
-echo [4/6] Checking image model scalers...
-if not exist "backend\models\malaria_real_scaler.pkl" (
-    echo       Retraining malaria + pneumonia models with correct scalers...
-    echo       This only happens once and takes a few minutes.
+REM --- Train new AI Health Companion models if missing ---
+echo [4/6] Checking AI Health Companion models...
+if not exist "backend\models\symptom_disease_model.pkl" (
+    echo       Training Smart Symptom Checker model...
+    echo       Downloading datasets and generating Random Forest classifier...
     pushd backend
-    pip install tqdm >nul 2>&1
-    python retrain_image_models.py
+    python train_symptom_model.py
     popd
 )
-echo       Image models ready
+if not exist "backend\models\skin_disease_model.h5" (
+    echo       Generating Skin Infection CNN model...
+    pushd backend
+    python train_skin_model.py
+    popd
+)
+echo       Health Companion models ready
 
 REM --- Setup frontend ---
 echo [5/6] Setting up frontend...
@@ -84,7 +89,7 @@ timeout /t 10 /nobreak >nul
 
 echo.
 echo  ==========================================
-echo   MedAI Diagnostics is RUNNING!
+echo   MedAI Health Companion is RUNNING!
 echo  ==========================================
 echo.
 echo   Frontend:  http://localhost:3000
