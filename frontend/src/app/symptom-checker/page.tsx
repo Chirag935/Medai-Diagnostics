@@ -68,11 +68,13 @@ export default function SymptomChecker() {
   const handleAddSymptom = (symptom: string) => {
     if (!selectedSymptoms.includes(symptom)) {
       setSelectedSymptoms([...selectedSymptoms, symptom])
+      setResult(null) // Clear old result when symptoms change
     }
   }
 
   const handleRemoveSymptom = (symptom: string) => {
     setSelectedSymptoms(selectedSymptoms.filter(s => s !== symptom))
+    setResult(null) // Clear old result when symptoms change
   }
 
   const analyzeSymptoms = async () => {
@@ -101,25 +103,12 @@ export default function SymptomChecker() {
         }
       })
     } catch (error) {
-      console.error(error)
-      // Fallback for demo if backend is not running
-      const dummyData = {
-        prediction: selectedSymptoms.includes("cough") ? "Respiratory Infection" : "General Malaise",
-        confidence: 0.85,
-        severity: "Moderate - Monitor symptoms",
-        recommendation: "Stay hydrated. If symptoms persist for more than 3 days, consult a doctor."
-      }
-      setResult(dummyData)
-      addSessionPrediction({
-        disease: 'Symptom Triage',
-        prediction: dummyData.prediction,
-        confidence: dummyData.confidence,
-        riskLevel: dummyData.severity,
-        timestamp: new Date().toISOString(),
-        details: {
-          Symptoms: selectedSymptoms.join(', '),
-          Recommendation: dummyData.recommendation
-        }
+      console.error('Symptom analysis error:', error)
+      setResult({
+        prediction: 'Connection Error',
+        confidence: 0,
+        severity: 'Unable to reach AI backend',
+        recommendation: 'Please ensure the backend server is running on port 8000 and try again.'
       })
     } finally {
       setIsAnalyzing(false)

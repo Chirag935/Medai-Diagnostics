@@ -5,6 +5,7 @@ import joblib
 import json
 import os
 import traceback
+import numpy as np
 
 router = APIRouter()
 
@@ -12,65 +13,102 @@ MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "models")
 MODEL_PATH = os.path.join(MODELS_DIR, "symptom_disease_model.pkl")
 META_PATH = os.path.join(MODELS_DIR, "symptom_disease_metadata.json")
 
+# Load model and metadata once at startup for faster predictions
+_model = None
+_metadata = None
+
+def _get_model():
+    global _model, _metadata
+    if _model is None:
+        if not os.path.exists(MODEL_PATH) or not os.path.exists(META_PATH):
+            raise HTTPException(
+                status_code=503,
+                detail="Symptom prediction model not trained yet. Run train_symptom_model.py first."
+            )
+        _model = joblib.load(MODEL_PATH)
+        with open(META_PATH, "r") as f:
+            _metadata = json.load(f)
+        print(f"[Symptom Checker] Model loaded: {len(_metadata['symptoms'])} symptoms, {len(_metadata['diseases'])} diseases")
+    return _model, _metadata
+
 class SymptomRequest(BaseModel):
     symptoms: list[str]
 
 @router.post("/predict")
 async def predict_disease(request: SymptomRequest):
     try:
-        # For demo purposes, we will return a mock prediction if the model is not trained yet
-        if not os.path.exists(MODEL_PATH) or not os.path.exists(META_PATH):
-            print("Model not found, returning mock response for demo.")
-            # Basic fallback logic for common symptoms
-            symptoms = [s.lower() for s in request.symptoms]
-            
-            if "cough" in symptoms and "fever" in symptoms:
-                return {
-                    "prediction": "Respiratory Infection (Possible TB/Pneumonia)",
-                    "confidence": 0.85,
-                    "severity": "High - Consult a doctor",
-                    "recommendation": "Please get a chest X-ray and consult a physician immediately."
-                }
-            elif "rash" in symptoms or "itching" in symptoms:
-                return {
-                    "prediction": "Fungal Infection / Allergic Reaction",
-                    "confidence": 0.78,
-                    "severity": "Low - Monitor",
-                    "recommendation": "Use topical cream. If it persists, consult a dermatologist."
-                }
-            else:
-                return {
-                    "prediction": "Common Viral Pathogen",
-                    "confidence": 0.65,
-                    "severity": "Moderate",
-                    "recommendation": "Rest and stay hydrated. Monitor symptoms."
-                }
-        
-        # Load the model
-        model = joblib.load(MODEL_PATH)
-        with open(META_PATH, "r") as f:
-            metadata = json.load(f)
-            
+        model, metadata = _get_model()
         all_symptoms = metadata["symptoms"]
+        all_diseases = metadata["diseases"]
         
-        # Create input array
+        # Create input vector — exact matching against model's symptom list
         input_data = [0] * len(all_symptoms)
-        for s in request.symptoms:
-            # Map user symptoms to model symptoms
-            for i, model_symp in enumerate(all_symptoms):
-                if s.lower().replace(" ", "_") in model_symp.lower():
-                    input_data[i] = 1
+        matched_count = 0
         
-        # Predict
+        for user_symptom in request.symptoms:
+            # Normalize: lowercase, replace spaces with underscores
+            normalized = user_symptom.lower().strip().replace(" ", "_")
+            
+            # Try exact match first
+            for i, model_symptom in enumerate(all_symptoms):
+                model_normalized = model_symptom.lower().strip()
+                if normalized == model_normalized:
+                    input_data[i] = 1
+                    matched_count += 1
+                    break
+            else:
+                # Try partial match as fallback (e.g., "fever" matches "high_fever")
+                for i, model_symptom in enumerate(all_symptoms):
+                    model_normalized = model_symptom.lower().strip()
+                    if normalized in model_normalized or model_normalized in normalized:
+                        input_data[i] = 1
+                        matched_count += 1
+                        break
+        
+        if matched_count == 0:
+            return {
+                "prediction": "Unable to match symptoms",
+                "confidence": 0.0,
+                "severity": "Unknown",
+                "recommendation": "Please select symptoms from the provided list for accurate prediction.",
+                "matched_symptoms": 0,
+                "total_submitted": len(request.symptoms)
+            }
+        
+        # Real ML prediction
         prediction = model.predict([input_data])[0]
         probabilities = model.predict_proba([input_data])[0]
         confidence = float(max(probabilities))
         
+        # Get top 3 predictions for transparency
+        top_indices = np.argsort(probabilities)[::-1][:3]
+        top_predictions = []
+        for idx in top_indices:
+            if probabilities[idx] > 0.01:
+                top_predictions.append({
+                    "disease": all_diseases[idx] if idx < len(all_diseases) else f"Class {idx}",
+                    "probability": round(float(probabilities[idx]) * 100, 1)
+                })
+        
+        # Determine severity based on confidence
+        if confidence >= 0.8:
+            severity = "High - Strong prediction. Consult a physician."
+        elif confidence >= 0.5:
+            severity = "Moderate - Likely match. Medical consultation recommended."
+        else:
+            severity = "Low - Uncertain prediction. Consider adding more symptoms."
+        
         return {
             "prediction": prediction,
-            "confidence": confidence,
-            "severity": "Consult a physician based on these findings."
+            "confidence": round(confidence, 3),
+            "severity": severity,
+            "recommendation": f"AI identified {matched_count} symptom(s). Top match: {prediction} ({round(confidence*100,1)}%). Please consult a healthcare professional for confirmation.",
+            "matched_symptoms": matched_count,
+            "total_submitted": len(request.symptoms),
+            "top_predictions": top_predictions
         }
+    except HTTPException:
+        raise
     except Exception as e:
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
