@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ArrowLeft, Activity, BarChart3, RefreshCw, CheckCircle2, XCircle, Clock, TrendingUp, Database, Shield } from 'lucide-react'
+import { ArrowLeft, Activity, BarChart3, RefreshCw, CheckCircle2, XCircle, Clock, TrendingUp, Database, Shield, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { API } from '@/lib/api-config'
 
@@ -45,6 +45,27 @@ export default function MLOpsDashboard() {
   const [dashboard, setDashboard] = useState<DashboardData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [submittingFeedback, setSubmittingFeedback] = useState<number | null>(null)
+
+  const submitFeedback = async (predictionId: number, isCorrect: boolean) => {
+    setSubmittingFeedback(predictionId)
+    try {
+      await fetch(`${API.feedback}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prediction_id: predictionId,
+          is_correct: isCorrect,
+          user_feedback: isCorrect ? 'Verified correct by user' : 'Marked incorrect by user'
+        })
+      })
+      await fetchDashboard(true) // Refresh data
+    } catch (error) {
+      console.error('Failed to submit feedback:', error)
+    } finally {
+      setSubmittingFeedback(null)
+    }
+  }
 
   const fetchDashboard = async (isRefresh = false) => {
     if (isRefresh) setIsRefreshing(true)
@@ -237,6 +258,7 @@ export default function MLOpsDashboard() {
                         <th className="text-left py-3 px-4 text-slate-400 font-semibold">Prediction</th>
                         <th className="text-left py-3 px-4 text-slate-400 font-semibold">Confidence</th>
                         <th className="text-left py-3 px-4 text-slate-400 font-semibold">Status</th>
+                        <th className="text-left py-3 px-4 text-slate-400 font-semibold">Verify</th>
                         <th className="text-left py-3 px-4 text-slate-400 font-semibold">Timestamp</th>
                       </tr>
                     </thead>
@@ -258,7 +280,7 @@ export default function MLOpsDashboard() {
                               <span className="text-slate-500 text-xs flex items-center gap-1">
                                 <Clock className="w-3 h-3" /> Pending
                               </span>
-                            ) : pred.is_correct === 1 ? (
+                            ) : pred.is_correct === true || pred.is_correct === 1 ? (
                               <span className="text-emerald-400 text-xs flex items-center gap-1">
                                 <CheckCircle2 className="w-3 h-3" /> Correct
                               </span>
@@ -266,6 +288,30 @@ export default function MLOpsDashboard() {
                               <span className="text-red-400 text-xs flex items-center gap-1">
                                 <XCircle className="w-3 h-3" /> Incorrect
                               </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            {pred.is_correct === null ? (
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => submitFeedback(pred.id, true)}
+                                  disabled={submittingFeedback === pred.id}
+                                  className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-colors disabled:opacity-50"
+                                  title="Mark as correct"
+                                >
+                                  <ThumbsUp className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => submitFeedback(pred.id, false)}
+                                  disabled={submittingFeedback === pred.id}
+                                  className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors disabled:opacity-50"
+                                  title="Mark as incorrect"
+                                >
+                                  <ThumbsDown className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-slate-600">Reviewed</span>
                             )}
                           </td>
                           <td className="py-3 px-4 text-slate-500 text-xs">{pred.timestamp.split('T')[0]}</td>
