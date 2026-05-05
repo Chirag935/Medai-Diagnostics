@@ -13,7 +13,7 @@ export default function HomePage() {
   const [metricsData, setMetricsData] = useState<any>(null)
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(false)
   const [activeStatIndex, setActiveStatIndex] = useState(0)
-  const { lang, setLang } = useLanguage()
+  const { lang, setLang, t } = useLanguage()
   const { isLoggedIn, doctor } = useAuth()
 
   // Animate stats counter
