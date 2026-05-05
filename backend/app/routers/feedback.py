@@ -13,12 +13,13 @@ from typing import Optional
 
 router = APIRouter()
 
-DB_PATH = "models/mlops_feedback.db"
+MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "models")
+DB_PATH = os.path.join(MODELS_DIR, "mlops_feedback.db")
 
 
 def init_db():
     """Initialize the SQLite database for feedback storage."""
-    os.makedirs("models", exist_ok=True)
+    os.makedirs(MODELS_DIR, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""

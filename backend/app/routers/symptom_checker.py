@@ -6,12 +6,29 @@ import json
 import os
 import traceback
 import numpy as np
+import sqlite3
+from datetime import datetime
 
 router = APIRouter()
 
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "models")
 MODEL_PATH = os.path.join(MODELS_DIR, "symptom_disease_model.pkl")
 META_PATH = os.path.join(MODELS_DIR, "symptom_disease_metadata.json")
+FEEDBACK_DB = os.path.join(MODELS_DIR, "mlops_feedback.db")
+
+def _log_prediction(module: str, prediction: str, confidence: float, features: str = None):
+    """Auto-log prediction to MLOps feedback database."""
+    try:
+        conn = sqlite3.connect(FEEDBACK_DB)
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO predictions (module, prediction, confidence, timestamp, features) VALUES (?, ?, ?, ?, ?)",
+            (module, prediction, confidence, datetime.now().isoformat(), features)
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass  # Don't break predictions if logging fails
 
 # Load model and metadata once at startup for faster predictions
 _model = None
@@ -97,6 +114,9 @@ async def predict_disease(request: SymptomRequest):
             severity = "Moderate - Likely match. Medical consultation recommended."
         else:
             severity = "Low - Uncertain prediction. Consider adding more symptoms."
+        
+        # Auto-log to MLOps dashboard
+        _log_prediction("symptoms", prediction, confidence, json.dumps(request.symptoms))
         
         return {
             "prediction": prediction,
