@@ -1,55 +1,29 @@
 """
 MLOps Feedback & Continuous Learning Router
-Implements a feedback loop where users can verify predictions,
-storing results in SQLite for model performance tracking and retraining.
+Uses Supabase for cloud-based prediction tracking and feedback.
 """
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-import sqlite3
 import os
-import json
 from datetime import datetime, timedelta
 from typing import Optional
 
 router = APIRouter()
 
-MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "models")
-DB_PATH = os.path.join(MODELS_DIR, "mlops_feedback.db")
+# --- Supabase Client ---
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 
+_supabase_client = None
 
-def init_db():
-    """Initialize the SQLite database for feedback storage."""
-    os.makedirs(MODELS_DIR, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS predictions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            module TEXT NOT NULL,
-            prediction TEXT NOT NULL,
-            confidence REAL NOT NULL,
-            user_feedback TEXT DEFAULT NULL,
-            is_correct INTEGER DEFAULT NULL,
-            timestamp TEXT NOT NULL,
-            features TEXT DEFAULT NULL
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS model_versions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            module TEXT NOT NULL,
-            version TEXT NOT NULL,
-            accuracy REAL NOT NULL,
-            samples_trained INTEGER NOT NULL,
-            timestamp TEXT NOT NULL
-        )
-    """)
-    conn.commit()
-    conn.close()
-
-
-# Initialize DB on module load
-init_db()
+def get_supabase():
+    global _supabase_client
+    if _supabase_client is None:
+        if not SUPABASE_URL or not SUPABASE_KEY:
+            raise HTTPException(status_code=500, detail="Supabase not configured. Set SUPABASE_URL and SUPABASE_KEY in backend/.env")
+        from supabase import create_client
+        _supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    return _supabase_client
 
 
 class PredictionLog(BaseModel):
@@ -69,15 +43,16 @@ class FeedbackSubmission(BaseModel):
 async def log_prediction(log: PredictionLog):
     """Log a prediction for future feedback collection."""
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO predictions (module, prediction, confidence, timestamp, features) VALUES (?, ?, ?, ?, ?)",
-            (log.module, log.prediction, log.confidence, datetime.now().isoformat(), log.features)
-        )
-        prediction_id = cursor.lastrowid
-        conn.commit()
-        conn.close()
+        sb = get_supabase()
+        result = sb.table("predictions").insert({
+            "module": log.module,
+            "prediction": log.prediction,
+            "confidence": log.confidence,
+            "timestamp": datetime.now().isoformat(),
+            "features": log.features
+        }).execute()
+        
+        prediction_id = result.data[0]["id"] if result.data else 0
         return {"prediction_id": prediction_id, "status": "logged"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -87,17 +62,14 @@ async def log_prediction(log: PredictionLog):
 async def submit_feedback(feedback: FeedbackSubmission):
     """Submit user feedback on a prediction's accuracy."""
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute(
-            "UPDATE predictions SET is_correct = ?, user_feedback = ? WHERE id = ?",
-            (1 if feedback.is_correct else 0, feedback.user_feedback, feedback.prediction_id)
-        )
-        if cursor.rowcount == 0:
-            conn.close()
+        sb = get_supabase()
+        result = sb.table("predictions").update({
+            "is_correct": feedback.is_correct,
+            "user_feedback": feedback.user_feedback
+        }).eq("id", feedback.prediction_id).execute()
+        
+        if not result.data:
             raise HTTPException(status_code=404, detail="Prediction ID not found")
-        conn.commit()
-        conn.close()
         return {"status": "feedback_recorded", "prediction_id": feedback.prediction_id}
     except HTTPException:
         raise
@@ -109,42 +81,33 @@ async def submit_feedback(feedback: FeedbackSubmission):
 async def get_mlops_dashboard():
     """Get comprehensive MLOps metrics for the dashboard."""
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-
-        # Total predictions
-        cursor.execute("SELECT COUNT(*) FROM predictions")
-        total_predictions = cursor.fetchone()[0]
-
-        # Predictions with feedback
-        cursor.execute("SELECT COUNT(*) FROM predictions WHERE is_correct IS NOT NULL")
-        total_feedback = cursor.fetchone()[0]
-
-        # Accuracy from feedback
-        cursor.execute("SELECT COUNT(*) FROM predictions WHERE is_correct = 1")
-        correct_count = cursor.fetchone()[0]
+        sb = get_supabase()
+        
+        # Fetch all predictions
+        all_preds = sb.table("predictions").select("*").order("id", desc=True).execute()
+        predictions = all_preds.data or []
+        
+        total_predictions = len(predictions)
+        
+        # Count feedback
+        with_feedback = [p for p in predictions if p.get("is_correct") is not None]
+        total_feedback = len(with_feedback)
+        correct_count = len([p for p in with_feedback if p.get("is_correct") is True])
         feedback_accuracy = (correct_count / total_feedback * 100) if total_feedback > 0 else 0
 
         # Per-module stats
         modules = {}
         for module in ["symptoms", "skin"]:
-            cursor.execute("SELECT COUNT(*) FROM predictions WHERE module = ?", (module,))
-            mod_total = cursor.fetchone()[0]
-
-            cursor.execute("SELECT COUNT(*) FROM predictions WHERE module = ? AND is_correct IS NOT NULL", (module,))
-            mod_feedback = cursor.fetchone()[0]
-
-            cursor.execute("SELECT COUNT(*) FROM predictions WHERE module = ? AND is_correct = 1", (module,))
-            mod_correct = cursor.fetchone()[0]
-
-            cursor.execute("SELECT AVG(confidence) FROM predictions WHERE module = ?", (module,))
-            avg_conf = cursor.fetchone()[0] or 0
+            mod_preds = [p for p in predictions if p.get("module") == module]
+            mod_feedback = [p for p in mod_preds if p.get("is_correct") is not None]
+            mod_correct = len([p for p in mod_feedback if p.get("is_correct") is True])
+            avg_conf = sum(p.get("confidence", 0) for p in mod_preds) / len(mod_preds) if mod_preds else 0
 
             modules[module] = {
-                "total_predictions": mod_total,
-                "total_feedback": mod_feedback,
+                "total_predictions": len(mod_preds),
+                "total_feedback": len(mod_feedback),
                 "correct": mod_correct,
-                "accuracy": round((mod_correct / mod_feedback * 100) if mod_feedback > 0 else 0, 1),
+                "accuracy": round((mod_correct / len(mod_feedback) * 100) if mod_feedback else 0, 1),
                 "avg_confidence": round(avg_conf * 100, 1),
             }
 
@@ -152,58 +115,41 @@ async def get_mlops_dashboard():
         daily_stats = []
         for i in range(6, -1, -1):
             day = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
-            cursor.execute(
-                "SELECT COUNT(*) FROM predictions WHERE timestamp LIKE ?",
-                (f"{day}%",)
-            )
-            count = cursor.fetchone()[0]
-            cursor.execute(
-                "SELECT COUNT(*) FROM predictions WHERE timestamp LIKE ? AND is_correct = 1",
-                (f"{day}%",)
-            )
-            correct = cursor.fetchone()[0]
-            cursor.execute(
-                "SELECT COUNT(*) FROM predictions WHERE timestamp LIKE ? AND is_correct IS NOT NULL",
-                (f"{day}%",)
-            )
-            reviewed = cursor.fetchone()[0]
+            day_preds = [p for p in predictions if p.get("timestamp", "").startswith(day)]
+            day_correct = len([p for p in day_preds if p.get("is_correct") is True])
+            day_reviewed = len([p for p in day_preds if p.get("is_correct") is not None])
             daily_stats.append({
                 "date": day,
-                "predictions": count,
-                "correct": correct,
-                "reviewed": reviewed,
+                "predictions": len(day_preds),
+                "correct": day_correct,
+                "reviewed": day_reviewed,
             })
 
-        # Recent predictions
-        cursor.execute(
-            "SELECT id, module, prediction, confidence, is_correct, user_feedback, timestamp FROM predictions ORDER BY id DESC LIMIT 10"
-        )
+        # Recent predictions (top 10)
         recent = []
-        for row in cursor.fetchall():
+        for row in predictions[:10]:
             recent.append({
-                "id": row[0],
-                "module": row[1],
-                "prediction": row[2],
-                "confidence": row[3],
-                "is_correct": row[4],
-                "user_feedback": row[5],
-                "timestamp": row[6],
+                "id": row.get("id"),
+                "module": row.get("module"),
+                "prediction": row.get("prediction"),
+                "confidence": row.get("confidence"),
+                "is_correct": row.get("is_correct"),
+                "user_feedback": row.get("user_feedback"),
+                "timestamp": row.get("timestamp"),
             })
 
         # Model version history
-        cursor.execute("SELECT * FROM model_versions ORDER BY id DESC LIMIT 5")
+        versions_result = sb.table("model_versions").select("*").order("id", desc=True).limit(5).execute()
         versions = []
-        for row in cursor.fetchall():
+        for row in (versions_result.data or []):
             versions.append({
-                "id": row[0],
-                "module": row[1],
-                "version": row[2],
-                "accuracy": row[3],
-                "samples_trained": row[4],
-                "timestamp": row[5],
+                "id": row.get("id"),
+                "module": row.get("module"),
+                "version": row.get("version"),
+                "accuracy": row.get("accuracy"),
+                "samples_trained": row.get("samples_trained"),
+                "timestamp": row.get("timestamp"),
             })
-
-        conn.close()
 
         return {
             "total_predictions": total_predictions,

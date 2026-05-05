@@ -6,7 +6,6 @@ import json
 import os
 import traceback
 import numpy as np
-import sqlite3
 from datetime import datetime
 
 router = APIRouter()
@@ -14,19 +13,31 @@ router = APIRouter()
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "models")
 MODEL_PATH = os.path.join(MODELS_DIR, "symptom_disease_model.pkl")
 META_PATH = os.path.join(MODELS_DIR, "symptom_disease_metadata.json")
-FEEDBACK_DB = os.path.join(MODELS_DIR, "mlops_feedback.db")
+
+# Supabase client for logging
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+_sb_client = None
+
+def _get_supabase():
+    global _sb_client
+    if _sb_client is None and SUPABASE_URL and SUPABASE_KEY:
+        from supabase import create_client
+        _sb_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    return _sb_client
 
 def _log_prediction(module: str, prediction: str, confidence: float, features: str = None):
-    """Auto-log prediction to MLOps feedback database."""
+    """Auto-log prediction to Supabase predictions table."""
     try:
-        conn = sqlite3.connect(FEEDBACK_DB)
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO predictions (module, prediction, confidence, timestamp, features) VALUES (?, ?, ?, ?, ?)",
-            (module, prediction, confidence, datetime.now().isoformat(), features)
-        )
-        conn.commit()
-        conn.close()
+        sb = _get_supabase()
+        if sb:
+            sb.table("predictions").insert({
+                "module": module,
+                "prediction": prediction,
+                "confidence": confidence,
+                "timestamp": datetime.now().isoformat(),
+                "features": features
+            }).execute()
     except Exception:
         pass  # Don't break predictions if logging fails
 
