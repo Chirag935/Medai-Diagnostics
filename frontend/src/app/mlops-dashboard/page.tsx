@@ -289,7 +289,7 @@ export default function MLOpsDashboard() {
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 {[
                   { step: '1', title: 'Predict', desc: 'AI generates prediction' },
-                  { step: '2', title: 'Log', desc: 'Result stored in SQLite' },
+                  { step: '2', title: 'Log', desc: 'Result stored in Supabase Cloud' },
                   { step: '3', title: 'Verify', desc: 'User confirms accuracy' },
                   { step: '4', title: 'Retrain', desc: 'Model improves over time' },
                 ].map((s, i) => (
