@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { ArrowLeft, Activity, BarChart3, RefreshCw, CheckCircle2, XCircle, Clock, TrendingUp, Database, Shield, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { API } from '@/lib/api-config'
+import { useAuth } from '@/context/AuthContext'
 
 interface ModuleStats {
   total_predictions: number
@@ -42,10 +43,16 @@ interface DashboardData {
 
 export default function MLOpsDashboard() {
   const router = useRouter()
+  const { isLoggedIn, role } = useAuth()
   const [dashboard, setDashboard] = useState<DashboardData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [submittingFeedback, setSubmittingFeedback] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!isLoggedIn) router.push('/login')
+    else if (role !== 'doctor') router.push('/')
+  }, [isLoggedIn, role])
 
   const submitFeedback = async (predictionId: number, isCorrect: boolean) => {
     setSubmittingFeedback(predictionId)

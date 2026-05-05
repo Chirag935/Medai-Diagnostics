@@ -17,7 +17,7 @@ interface Medicine {
 function PrescriptionContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { doctor, isLoggedIn } = useAuth()
+  const { doctor, isLoggedIn, role } = useAuth()
   const { t } = useLanguage()
 
   const [patientName, setPatientName] = useState(searchParams.get('name') || '')
@@ -31,7 +31,8 @@ function PrescriptionContent() {
 
   useEffect(() => {
     if (!isLoggedIn) router.push('/login')
-  }, [isLoggedIn])
+    else if (role !== 'doctor') router.push('/')
+  }, [isLoggedIn, role])
 
   const addMedicine = () => {
     setMedicines([...medicines, { name: '', dosage: '', frequency: 'Twice a day', duration: '5 days', instructions: 'After food' }])

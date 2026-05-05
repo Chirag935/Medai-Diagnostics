@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-from app.routers import symptom_checker, skin_analyzer, metrics, chat, feedback, patients
+from app.routers import symptom_checker, skin_analyzer, metrics, chat, feedback, patients, appointments
 
 app = FastAPI(
     title="MedAI Diagnostics API",
@@ -41,6 +41,7 @@ app.include_router(metrics.router, prefix="/api/metrics", tags=["Metrics"])
 app.include_router(chat.router, prefix="/api/chat", tags=["AI Assistant"])
 app.include_router(feedback.router, prefix="/api/feedback", tags=["MLOps Feedback"])
 app.include_router(patients.router, prefix="/api/patients", tags=["Patient Management"])
+app.include_router(appointments.router, prefix="/api/appointments", tags=["Appointments"])
 
 @app.get("/")
 async def root():

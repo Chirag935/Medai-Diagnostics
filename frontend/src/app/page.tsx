@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Activity, Shield, Stethoscope, Search, Download, Camera, BarChart3, X, Bot, Cpu, Heart, Brain, Microscope, FileCheck, ChevronRight, Sparkles, Lock, Clock, Users, Globe, FileText, LogIn } from 'lucide-react'
+import { Activity, Shield, Stethoscope, Search, Download, Camera, BarChart3, X, Bot, Cpu, Heart, Brain, Microscope, FileCheck, ChevronRight, Sparkles, Lock, Clock, Users, Globe, FileText, LogIn, CalendarClock, LogOut } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { API } from '@/lib/api-config'
 import { useLanguage } from '@/context/LanguageContext'
@@ -14,7 +14,7 @@ export default function HomePage() {
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(false)
   const [activeStatIndex, setActiveStatIndex] = useState(0)
   const { lang, setLang, t } = useLanguage()
-  const { isLoggedIn, doctor } = useAuth()
+  const { isLoggedIn, user, role, hasAccess, logout } = useAuth()
 
   // Animate stats counter
   useEffect(() => {
@@ -107,7 +107,22 @@ export default function HomePage() {
       shadow: 'shadow-rose-500/20',
       stats: 'Auto PDF',
     },
+    {
+      id: 'appointments',
+      name: 'Appointments',
+      icon: CalendarClock,
+      tag: 'Scheduling',
+      description: 'Schedule and manage patient appointments with doctors.',
+      gradient: 'from-sky-500 to-blue-500',
+      shadow: 'shadow-sky-500/20',
+      stats: 'Calendar',
+    },
   ]
+
+  // Filter modules by role
+  const visibleModules = isLoggedIn
+    ? modules.filter(m => hasAccess(m.id))
+    : modules.filter(m => m.id !== 'appointments') // Hide appointments from landing
 
   const platformStats = [
     { value: '99.1%', label: t('stat.symptomAcc'), icon: Brain },
@@ -185,12 +200,36 @@ export default function HomePage() {
                 <span className="hidden sm:inline">{t('nav.accuracy')}</span>
               </button>
               <button
-                onClick={() => router.push(isLoggedIn ? '/patients' : '/login')}
+                onClick={() => {
+                  if (isLoggedIn) {
+                    if (role === 'patient') router.push('/symptom-checker')
+                    else if (role === 'receptionist') router.push('/appointments')
+                    else router.push('/patients')
+                  } else {
+                    router.push('/login')
+                  }
+                }}
                 className="flex items-center gap-2 px-4 py-2.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 rounded-xl text-sm font-semibold transition-all border border-purple-500/20 hover:border-purple-500/40"
               >
                 <LogIn className="w-4 h-4" />
-                <span className="hidden sm:inline">{isLoggedIn ? doctor?.name?.split(' ')[0] : t('nav.login')}</span>
+                <span className="hidden sm:inline">
+                  {isLoggedIn ? (
+                    <span className="flex items-center gap-1.5">
+                      {user?.name?.split(' ')[0]}
+                      <span className="px-1.5 py-0.5 text-[10px] rounded-md bg-purple-500/20 text-purple-300 uppercase font-bold">{role}</span>
+                    </span>
+                  ) : t('nav.login')}
+                </span>
               </button>
+              {isLoggedIn && (
+                <button
+                  onClick={() => { logout(); router.push('/') }}
+                  className="flex items-center gap-1 px-3 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl text-sm font-semibold transition-all border border-red-500/20"
+                  title="Logout"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -280,7 +319,7 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {modules.map((module) => {
+            {visibleModules.map((module) => {
               const Icon = module.icon
               return (
                 <div

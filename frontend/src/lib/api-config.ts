@@ -7,4 +7,5 @@ export const API = {
   metrics: `${API_BASE_URL}/api/metrics`,
   chat: `${API_BASE_URL}/api/chat`,
   feedback: `${API_BASE_URL}/api/feedback`,
+  appointments: `${API_BASE_URL}/api/appointments`,
 };

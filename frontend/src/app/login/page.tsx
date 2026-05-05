@@ -1,16 +1,23 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowLeft, LogIn, UserPlus, Stethoscope, Mail, Lock, Building2, GraduationCap } from 'lucide-react'
+import { ArrowLeft, LogIn, UserPlus, Stethoscope, Mail, Lock, Building2, GraduationCap, User, Phone, ClipboardList } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/context/LanguageContext'
+
+const ROLES = [
+  { id: 'patient', label: 'Patient', icon: User, color: 'from-blue-500 to-cyan-500', desc: 'Check symptoms & get AI diagnosis' },
+  { id: 'doctor', label: 'Doctor', icon: Stethoscope, color: 'from-teal-500 to-emerald-500', desc: 'Full clinical access & prescriptions' },
+  { id: 'receptionist', label: 'Receptionist', icon: ClipboardList, color: 'from-purple-500 to-pink-500', desc: 'Manage patients & schedule appointments' },
+]
 
 export default function LoginPage() {
   const router = useRouter()
   const { login, register } = useAuth()
   const { t } = useLanguage()
   const [isRegister, setIsRegister] = useState(false)
+  const [selectedRole, setSelectedRole] = useState('patient')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
@@ -20,6 +27,7 @@ export default function LoginPage() {
     password: '',
     specialization: 'General Medicine',
     clinic_name: '',
+    phone: '',
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -29,17 +37,24 @@ export default function LoginPage() {
 
     try {
       if (isRegister) {
-        await register(form)
+        await register({ ...form, role: selectedRole })
       } else {
         await login(form.email, form.password)
       }
-      router.push('/patients')
+      // Route based on role
+      const userData = JSON.parse(localStorage.getItem('medai_user') || '{}')
+      const role = userData.role || selectedRole
+      if (role === 'patient') router.push('/symptom-checker')
+      else if (role === 'receptionist') router.push('/appointments')
+      else router.push('/patients')
     } catch (err: any) {
       setError(err.message)
     } finally {
       setIsLoading(false)
     }
   }
+
+  const activeRole = ROLES.find(r => r.id === selectedRole)!
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 flex items-center justify-center relative overflow-hidden">
@@ -49,25 +64,52 @@ export default function LoginPage() {
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl" />
       </div>
 
-      <div className="relative z-10 w-full max-w-md px-6">
+      <div className="relative z-10 w-full max-w-lg px-6">
         {/* Back button */}
         <button onClick={() => router.push('/')} className="flex items-center text-teal-400 hover:text-teal-300 mb-8 transition-colors">
           <ArrowLeft className="w-5 h-5 mr-2" />
-          {t('common.back')}
+          Back to Home
         </button>
 
         {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="w-20 h-20 mx-auto bg-gradient-to-br from-teal-500 to-cyan-500 rounded-2xl flex items-center justify-center mb-4 shadow-2xl shadow-teal-500/20">
-            <Stethoscope className="w-10 h-10 text-white" />
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 mx-auto bg-gradient-to-br from-teal-500 to-cyan-500 rounded-2xl flex items-center justify-center mb-3 shadow-2xl shadow-teal-500/20">
+            <Stethoscope className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-white">MedAI Diagnostics</h1>
-          <p className="text-slate-400 text-sm mt-1">Professional Clinical Portal</p>
+          <p className="text-slate-400 text-sm mt-1">Select your role to continue</p>
+        </div>
+
+        {/* Role Selector */}
+        <div className="grid grid-cols-3 gap-2 mb-6">
+          {ROLES.map(role => {
+            const Icon = role.icon
+            const isActive = selectedRole === role.id
+            return (
+              <button
+                key={role.id}
+                onClick={() => setSelectedRole(role.id)}
+                className={`relative flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all duration-300 ${
+                  isActive
+                    ? `bg-gradient-to-br ${role.color} border-transparent text-white shadow-lg`
+                    : 'bg-slate-900/50 border-white/[0.06] text-slate-400 hover:border-white/10 hover:text-white'
+                }`}
+              >
+                <Icon className="w-5 h-5" />
+                <span className="text-xs font-semibold">{role.label}</span>
+              </button>
+            )
+          })}
         </div>
 
         {/* Card */}
         <div className="bg-[#0a1225] border border-white/[0.06] rounded-2xl p-8">
-          {/* Toggle */}
+          {/* Role description */}
+          <div className={`text-center mb-5 px-4 py-2 rounded-lg bg-gradient-to-r ${activeRole.color} bg-opacity-10`}>
+            <p className="text-xs text-white/80">{activeRole.desc}</p>
+          </div>
+
+          {/* Toggle Login/Register */}
           <div className="flex bg-slate-900 rounded-xl p-1 mb-6">
             <button
               onClick={() => setIsRegister(false)}
@@ -76,7 +118,7 @@ export default function LoginPage() {
               }`}
             >
               <LogIn className="w-4 h-4" />
-              {t('auth.login')}
+              Login
             </button>
             <button
               onClick={() => setIsRegister(true)}
@@ -85,7 +127,7 @@ export default function LoginPage() {
               }`}
             >
               <UserPlus className="w-4 h-4" />
-              {t('auth.register')}
+              Sign Up
             </button>
           </div>
 
@@ -99,52 +141,89 @@ export default function LoginPage() {
             {isRegister && (
               <>
                 <div>
-                  <label className="text-xs text-slate-400 mb-1.5 block">{t('auth.doctorName')}</label>
+                  <label className="text-xs text-slate-400 mb-1.5 block">Full Name</label>
                   <div className="relative">
-                    <Stethoscope className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                     <input
                       type="text"
                       required
                       value={form.name}
                       onChange={e => setForm({...form, name: e.target.value})}
-                      placeholder="Dr. John Smith"
+                      placeholder={selectedRole === 'doctor' ? 'Dr. John Smith' : 'John Smith'}
                       className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-500 transition-colors text-sm"
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="text-xs text-slate-400 mb-1.5 block">{t('auth.clinicName')}</label>
-                  <div className="relative">
-                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                    <input
-                      type="text"
-                      value={form.clinic_name}
-                      onChange={e => setForm({...form, clinic_name: e.target.value})}
-                      placeholder="City Hospital"
-                      className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-500 transition-colors text-sm"
-                    />
+
+                {selectedRole === 'patient' && (
+                  <div>
+                    <label className="text-xs text-slate-400 mb-1.5 block">Phone Number</label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                      <input
+                        type="tel"
+                        value={form.phone}
+                        onChange={e => setForm({...form, phone: e.target.value})}
+                        placeholder="+91 98765 43210"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-500 transition-colors text-sm"
+                      />
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <label className="text-xs text-slate-400 mb-1.5 block">{t('auth.specialization')}</label>
-                  <div className="relative">
-                    <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                    <select
-                      value={form.specialization}
-                      onChange={e => setForm({...form, specialization: e.target.value})}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-teal-500 transition-colors text-sm appearance-none"
-                    >
-                      {['General Medicine', 'Dermatology', 'Cardiology', 'Neurology', 'Orthopedics', 'Pediatrics', 'ENT', 'Ophthalmology', 'Psychiatry', 'Other'].map(s => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
+                )}
+
+                {selectedRole === 'doctor' && (
+                  <>
+                    <div>
+                      <label className="text-xs text-slate-400 mb-1.5 block">Specialization</label>
+                      <div className="relative">
+                        <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                        <select
+                          value={form.specialization}
+                          onChange={e => setForm({...form, specialization: e.target.value})}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-teal-500 transition-colors text-sm appearance-none"
+                        >
+                          {['General Medicine', 'Dermatology', 'Cardiology', 'Neurology', 'Orthopedics', 'Pediatrics', 'ENT', 'Ophthalmology', 'Psychiatry', 'Other'].map(s => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-400 mb-1.5 block">Clinic / Hospital</label>
+                      <div className="relative">
+                        <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                        <input
+                          type="text"
+                          value={form.clinic_name}
+                          onChange={e => setForm({...form, clinic_name: e.target.value})}
+                          placeholder="City Hospital"
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-500 transition-colors text-sm"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {selectedRole === 'receptionist' && (
+                  <div>
+                    <label className="text-xs text-slate-400 mb-1.5 block">Clinic / Hospital</label>
+                    <div className="relative">
+                      <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                      <input
+                        type="text"
+                        value={form.clinic_name}
+                        onChange={e => setForm({...form, clinic_name: e.target.value})}
+                        placeholder="City Hospital"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-500 transition-colors text-sm"
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
               </>
             )}
 
             <div>
-              <label className="text-xs text-slate-400 mb-1.5 block">{t('auth.email')}</label>
+              <label className="text-xs text-slate-400 mb-1.5 block">Email</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                 <input
@@ -152,14 +231,14 @@ export default function LoginPage() {
                   required
                   value={form.email}
                   onChange={e => setForm({...form, email: e.target.value})}
-                  placeholder="doctor@clinic.com"
+                  placeholder={`${selectedRole}@clinic.com`}
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-500 transition-colors text-sm"
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-xs text-slate-400 mb-1.5 block">{t('auth.password')}</label>
+              <label className="text-xs text-slate-400 mb-1.5 block">Password</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                 <input
@@ -176,9 +255,9 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-teal-500 to-cyan-500 text-white py-3 rounded-xl font-semibold hover:shadow-xl hover:shadow-teal-500/20 transition-all disabled:opacity-50 mt-2"
+              className={`w-full bg-gradient-to-r ${activeRole.color} text-white py-3 rounded-xl font-semibold hover:shadow-xl hover:shadow-teal-500/20 transition-all disabled:opacity-50 mt-2`}
             >
-              {isLoading ? t('common.loading') : (isRegister ? t('auth.register') : t('auth.login'))}
+              {isLoading ? 'Please wait...' : (isRegister ? `Sign Up as ${activeRole.label}` : `Login as ${activeRole.label}`)}
             </button>
           </form>
         </div>
