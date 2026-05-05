@@ -41,10 +41,19 @@ class AppointmentCreate(BaseModel):
     appointment_time: str  # "10:00"
     notes: str = ""
 
-
 class AppointmentUpdate(BaseModel):
     status: str  # "scheduled", "completed", "cancelled"
     notes: Optional[str] = None
+
+class AppointmentRequestCreate(BaseModel):
+    requested_date: str
+    requested_time_frame: str # e.g. "Morning (09:00 - 12:00)"
+    symptoms: str = ""
+
+class AppointmentRequestApprove(BaseModel):
+    doctor_id: int
+    appointment_time: str
+    notes: str = ""
 
 
 @router.post("/create")
@@ -159,3 +168,122 @@ async def get_doctors_for_scheduling(token: str):
     
     result = sb.table("users").select("id, name, specialization, clinic_name").eq("role", "doctor").execute()
     return result.data or []
+
+# --- Appointment Requests Flow ---
+
+@router.post("/request")
+async def create_appointment_request(req: AppointmentRequestCreate, token: str):
+    """Patient requests an appointment timeframe."""
+    sb = get_supabase()
+    user = _get_user(sb, token)
+    
+    if user["role"] != "patient":
+        raise HTTPException(status_code=403, detail="Only patients can request appointments")
+        
+    result = sb.table("appointment_requests").insert({
+        "patient_id": user["id"],
+        "requested_date": req.requested_date,
+        "requested_time_frame": req.requested_time_frame,
+        "symptoms": req.symptoms,
+        "status": "pending"
+    }).execute()
+    
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Failed to submit request")
+    return result.data[0]
+
+
+@router.get("/requests")
+async def list_appointment_requests(token: str):
+    """Receptionists view all pending requests, Patients view their own."""
+    sb = get_supabase()
+    user = _get_user(sb, token)
+    
+    if user["role"] == "receptionist":
+        result = sb.table("appointment_requests").select("*").order("created_at", desc=True).execute()
+    elif user["role"] == "patient":
+        result = sb.table("appointment_requests").select("*").eq("patient_id", user["id"]).order("created_at", desc=True).execute()
+    else:
+        return []
+        
+    requests = result.data or []
+    
+    # Enrich with patient names
+    enriched = []
+    for req in requests:
+        patient_result = sb.table("users").select("name").eq("id", req.get("patient_id")).execute()
+        patient_name = patient_result.data[0]["name"] if patient_result.data else "Unknown"
+        enriched.append({**req, "patient_name": patient_name})
+        
+    return enriched
+
+
+@router.get("/doctors-availability")
+async def check_doctors_availability(date: str, token: str):
+    """Receptionist checks which doctors are available on a specific date."""
+    sb = get_supabase()
+    user = _get_user(sb, token)
+    
+    if user["role"] != "receptionist":
+        raise HTTPException(status_code=403, detail="Only receptionists can check availability")
+        
+    # Get all doctors
+    doctors_result = sb.table("users").select("id, name, specialization").eq("role", "doctor").execute()
+    doctors = doctors_result.data or []
+    
+    # Get all appointments for that date
+    appts_result = sb.table("appointments").select("doctor_id, appointment_time, status").eq("appointment_date", date).execute()
+    appts = appts_result.data or []
+    
+    # Group appointments by doctor
+    availability = []
+    for doc in doctors:
+        doc_appts = [a["appointment_time"] for a in appts if a["doctor_id"] == doc["id"] and a["status"] != "cancelled"]
+        availability.append({
+            "id": doc["id"],
+            "name": doc["name"],
+            "specialization": doc["specialization"],
+            "booked_times": doc_appts
+        })
+        
+    return availability
+
+
+@router.post("/approve-request/{request_id}")
+async def approve_appointment_request(request_id: int, approval: AppointmentRequestApprove, token: str):
+    """Receptionist converts a pending request into a scheduled appointment."""
+    sb = get_supabase()
+    user = _get_user(sb, token)
+    
+    if user["role"] != "receptionist":
+        raise HTTPException(status_code=403, detail="Only receptionists can approve requests")
+        
+    # Get the request
+    req_result = sb.table("appointment_requests").select("*").eq("id", request_id).execute()
+    if not req_result.data:
+        raise HTTPException(status_code=404, detail="Request not found")
+        
+    request_data = req_result.data[0]
+    
+    if request_data["status"] != "pending":
+        raise HTTPException(status_code=400, detail="Request is already processed")
+        
+    # Create the official appointment
+    appt_result = sb.table("appointments").insert({
+        "patient_id": request_data["patient_id"],
+        "doctor_id": approval.doctor_id,
+        "receptionist_id": user["id"],
+        "symptoms": request_data["symptoms"],
+        "appointment_date": request_data["requested_date"],
+        "appointment_time": approval.appointment_time,
+        "notes": approval.notes,
+        "status": "scheduled"
+    }).execute()
+    
+    if not appt_result.data:
+        raise HTTPException(status_code=500, detail="Failed to create appointment")
+        
+    # Update request status
+    sb.table("appointment_requests").update({"status": "approved"}).eq("id", request_id).execute()
+    
+    return appt_result.data[0]
