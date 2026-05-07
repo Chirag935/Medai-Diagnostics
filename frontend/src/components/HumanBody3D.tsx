@@ -135,15 +135,16 @@ function BodyPart({ regionKey, region, isSelected, isHighlighted, onClick, onHov
           metalness={0.2}
         />
       </mesh>
-      {/* Always show label */}
+      {/* Always show label, pull it further forward along Z-axis */}
       <Text
-        position={[0, region.scale[1] * 0.8 + 0.4, 0.5]}
+        position={[0, region.scale[1] * 0.8 + 0.4, 0.8]}
         fontSize={0.22}
         color={isSelected ? '#ffffff' : hovered ? '#e2e8f0' : '#94a3b8'}
         anchorX="center"
         anchorY="middle"
         outlineWidth={0.02}
         outlineColor="#000000"
+        depthOffset={-10} // Ensure it renders on top
       >
         {region.label}
       </Text>
