@@ -39,14 +39,9 @@ export default function LoginPage() {
       if (isRegister) {
         await register({ ...form, role: selectedRole })
       } else {
-        await login(form.email, form.password)
+        await login(form.email, form.password, selectedRole)
       }
-      // Route based on role
-      const userData = JSON.parse(localStorage.getItem('medai_user') || '{}')
-      const role = userData.role || selectedRole
-      if (role === 'patient') router.push('/symptom-checker')
-      else if (role === 'receptionist') router.push('/appointments')
-      else router.push('/patients')
+      router.push('/')
     } catch (err: any) {
       setError(err.message)
     } finally {

@@ -22,7 +22,7 @@ const BODY_REGIONS: Record<string, {
   },
   throat: {
     position: [0, 2.3, 0],
-    scale: [0.35, 0.25, 0.35],
+    scale: [0.45, 0.35, 0.45],
     color: '#f472b6',
     symptoms: ['patches_in_throat', 'throat_irritation', 'cough', 'phlegm', 'continuous_sneezing', 'runny_nose', 'congestion', 'sinus_pressure'],
     label: 'Throat',
@@ -135,18 +135,18 @@ function BodyPart({ regionKey, region, isSelected, isHighlighted, onClick, onHov
           metalness={0.2}
         />
       </mesh>
-      {(hovered || isSelected) && (
-        <Text
-          position={[0, region.scale[1] * 0.8 + 0.3, 0]}
-          fontSize={0.25}
-          color="white"
-          anchorX="center"
-          anchorY="middle"
-          font="/fonts/inter.woff"
-        >
-          {region.label}
-        </Text>
-      )}
+      {/* Always show label */}
+      <Text
+        position={[0, region.scale[1] * 0.8 + 0.4, 0.5]}
+        fontSize={0.22}
+        color={isSelected ? '#ffffff' : hovered ? '#e2e8f0' : '#94a3b8'}
+        anchorX="center"
+        anchorY="middle"
+        outlineWidth={0.02}
+        outlineColor="#000000"
+      >
+        {region.label}
+      </Text>
     </group>
   )
 }
@@ -158,12 +158,8 @@ function HumanBodyScene({ selectedRegion, highlightedRegions, onSelectRegion }: 
 }) {
   const groupRef = useRef<THREE.Group>(null)
 
-  // Slow ambient rotation
-  useFrame((_, delta) => {
-    if (groupRef.current) {
-      groupRef.current.rotation.y += delta * 0.08
-    }
-  })
+  // No auto-rotation so labels stay readable
+  // User can drag to rotate manually via OrbitControls
 
   return (
     <>

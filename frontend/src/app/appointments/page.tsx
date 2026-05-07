@@ -393,7 +393,9 @@ export default function AppointmentsPage() {
                         <th className="text-left py-3 px-4 text-slate-400 font-semibold">Date & Time</th>
                         <th className="text-left py-3 px-4 text-slate-400 font-semibold">Symptoms</th>
                         <th className="text-left py-3 px-4 text-slate-400 font-semibold">Status</th>
-                        <th className="text-left py-3 px-4 text-slate-400 font-semibold">Actions</th>
+                        {(role === 'receptionist' || role === 'doctor') && (
+                          <th className="text-left py-3 px-4 text-slate-400 font-semibold">Actions</th>
+                        )}
                       </tr>
                     </thead>
                     <tbody>
@@ -429,38 +431,40 @@ export default function AppointmentsPage() {
                               {appt.status}
                             </span>
                           </td>
-                          <td className="py-3 px-4 flex items-center gap-2">
-                            {appt.status === 'scheduled' && (
-                              <a 
-                                href={generateGoogleCalendarLink(appt)} 
-                                target="_blank" 
-                                rel="noreferrer"
-                                className="flex items-center gap-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1.5 rounded-lg border border-slate-700 transition-colors"
-                                title="Add to Google Calendar"
-                              >
-                                <Calendar className="w-3 h-3 text-blue-400" /> GCal
-                              </a>
-                            )}
-                            
-                            {(role === 'receptionist' || role === 'doctor') && appt.status === 'scheduled' && (
-                              <>
-                                <button
-                                  onClick={() => updateStatus(appt.id, 'completed')}
-                                  className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-colors"
-                                  title="Mark completed"
+                          {(role === 'receptionist' || role === 'doctor') && (
+                            <td className="py-3 px-4 flex items-center gap-2">
+                              {appt.status === 'scheduled' && (
+                                <a 
+                                  href={generateGoogleCalendarLink(appt)} 
+                                  target="_blank" 
+                                  rel="noreferrer"
+                                  className="flex items-center gap-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1.5 rounded-lg border border-slate-700 transition-colors"
+                                  title="Add to Google Calendar"
                                 >
-                                  <CheckCircle2 className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => updateStatus(appt.id, 'cancelled')}
-                                  className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors"
-                                  title="Cancel"
-                                >
-                                  <XCircle className="w-4 h-4" />
-                                </button>
-                              </>
-                            )}
-                          </td>
+                                  <Calendar className="w-3 h-3 text-blue-400" /> GCal
+                                </a>
+                              )}
+                              
+                              {appt.status === 'scheduled' && (
+                                <>
+                                  <button
+                                    onClick={() => updateStatus(appt.id, 'completed')}
+                                    className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-colors"
+                                    title="Mark completed"
+                                  >
+                                    <CheckCircle2 className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => updateStatus(appt.id, 'cancelled')}
+                                    className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors"
+                                    title="Cancel"
+                                  >
+                                    <XCircle className="w-4 h-4" />
+                                  </button>
+                                </>
+                              )}
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>

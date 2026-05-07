@@ -14,7 +14,7 @@ interface User {
   clinic_name: string
 }
 
-// Module access matrix
+// Strict role-based module access matrix
 const MODULE_ACCESS: Record<string, UserRole[]> = {
   'symptom-checker': ['patient', 'doctor'],
   'skin-analyzer': ['patient', 'doctor'],
@@ -31,7 +31,7 @@ interface AuthContextType {
   token: string | null
   isLoggedIn: boolean
   role: UserRole | null
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string, role?: string) => Promise<void>
   register: (data: any) => Promise<void>
   logout: () => void
   hasAccess: (module: string) => boolean
@@ -66,11 +66,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoaded(true)
   }, [])
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, role: string = '') => {
     const res = await fetch(`${API_BASE_URL}/api/patients/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, role }),
     })
     if (!res.ok) {
       const err = await res.json()

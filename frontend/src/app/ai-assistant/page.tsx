@@ -29,9 +29,14 @@ export default function AIAssistant() {
     scrollToBottom()
   }, [messages])
 
-  // Build RAG context from session predictions
-  const buildDiagnosticContext = () => {
+  // Build RAG context from session predictions — only when user asks about it
+  const buildDiagnosticContext = (userMessage: string) => {
     if (sessionPredictions.length === 0) return ''
+    // Only inject context if user explicitly asks about their diagnosis
+    const triggerWords = ['my diagnosis', 'my results', 'my test', 'my report', 'what did', 'checker said', 'analyzer said', 'predicted', 'my condition']
+    const lower = userMessage.toLowerCase()
+    const shouldInject = triggerWords.some(t => lower.includes(t))
+    if (!shouldInject) return ''
     return sessionPredictions.map(p => 
       `Module: ${p.disease} | Prediction: ${p.prediction} | Confidence: ${(p.confidence * 100).toFixed(1)}% | Severity: ${p.riskLevel}`
     ).join('\n')
@@ -56,7 +61,7 @@ export default function AIAssistant() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: userMessage.content,
-          diagnostic_context: buildDiagnosticContext(),
+          diagnostic_context: buildDiagnosticContext(userMessage.content),
           history: messages.map(m => ({ role: m.role, content: m.content })),
         }),
       })

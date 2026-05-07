@@ -184,12 +184,6 @@ export default function HomePage() {
                 {t('nav.modules')}
               </button>
               <button
-                onClick={fetchMetrics}
-                className="px-4 py-2 text-sm text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-all font-medium"
-              >
-                {t('nav.accuracy')}
-              </button>
-              <button
                 onClick={() => document.getElementById('tech-section')?.scrollIntoView({ behavior: 'smooth' })}
                 className="px-4 py-2 text-sm text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-all font-medium"
               >

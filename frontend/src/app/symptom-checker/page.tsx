@@ -51,9 +51,13 @@ const COMMON_SYMPTOMS = [
 
 interface ResultData {
   prediction: string;
+  description?: string;
   confidence: number;
   severity: string;
   recommendation: string;
+  confidence_warning?: string;
+  disclaimer?: string;
+  top_predictions?: { disease: string; probability: number; description: string }[];
 }
 
 export default function SymptomChecker() {
@@ -68,13 +72,13 @@ export default function SymptomChecker() {
   const handleAddSymptom = (symptom: string) => {
     if (!selectedSymptoms.includes(symptom)) {
       setSelectedSymptoms([...selectedSymptoms, symptom])
-      setResult(null) // Clear old result when symptoms change
+      setResult(null)
     }
   }
 
   const handleRemoveSymptom = (symptom: string) => {
     setSelectedSymptoms(selectedSymptoms.filter(s => s !== symptom))
-    setResult(null) // Clear old result when symptoms change
+    setResult(null)
   }
 
   const analyzeSymptoms = async () => {
@@ -239,7 +243,7 @@ export default function SymptomChecker() {
             </div>
           </div>
 
-          {/* Right Column: Results & Interactive Body Map */}
+          {/* Right Column: Results */}
           <div>
             {result ? (
               <div className="bg-slate-900/80 border border-teal-500/30 rounded-3xl p-8 animate-fadeIn shadow-2xl shadow-teal-500/10">
@@ -247,9 +251,23 @@ export default function SymptomChecker() {
                   <Activity className="w-8 h-8 text-teal-400" />
                 </div>
                 <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-2">AI Triage Result</h2>
-                <h3 className="text-3xl font-bold text-white mb-6">{result.prediction}</h3>
+                <h3 className="text-3xl font-bold text-white mb-2">{result.prediction}</h3>
                 
-                <div className="space-y-4 mb-8">
+                {/* Disease Description */}
+                {result.description && (
+                  <p className="text-slate-300 text-sm leading-relaxed mb-6 bg-slate-800/50 p-4 rounded-xl border border-white/5">
+                    📋 {result.description}
+                  </p>
+                )}
+
+                {/* Confidence Warning */}
+                {result.confidence_warning && (
+                  <div className="bg-yellow-500/10 border border-yellow-500/20 text-yellow-300 text-sm px-4 py-3 rounded-xl mb-4">
+                    {result.confidence_warning}
+                  </div>
+                )}
+                
+                <div className="space-y-4 mb-6">
                   <div className="flex justify-between items-center p-4 bg-slate-800/50 rounded-xl border border-white/5">
                     <span className="text-slate-400">AI Confidence</span>
                     <span className="text-white font-bold text-lg">{(result.confidence * 100).toFixed(1)}%</span>
@@ -260,7 +278,25 @@ export default function SymptomChecker() {
                   </div>
                 </div>
 
-                <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-5 mb-8">
+                {/* Top 3 Predictions */}
+                {result.top_predictions && result.top_predictions.length > 1 && (
+                  <div className="mb-6">
+                    <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Other Possible Conditions</h4>
+                    <div className="space-y-2">
+                      {result.top_predictions.slice(1).map((pred, i) => (
+                        <div key={i} className="bg-slate-800/30 border border-white/5 rounded-xl p-3">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-white font-semibold text-sm">{pred.disease}</span>
+                            <span className="text-slate-400 text-xs">{pred.probability}%</span>
+                          </div>
+                          <p className="text-slate-500 text-xs">{pred.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-5 mb-4">
                   <h4 className="text-indigo-400 font-semibold mb-2 flex items-center">
                     <FileText className="w-5 h-5 mr-2" /> Recommendation
                   </h4>
@@ -268,6 +304,13 @@ export default function SymptomChecker() {
                     {result.recommendation || "Based on your symptoms, we strongly recommend consulting a healthcare professional for a formal diagnosis."}
                   </p>
                 </div>
+
+                {/* Medical Disclaimer */}
+                {result.disclaimer && (
+                  <div className="bg-slate-800/50 border border-white/5 rounded-xl p-4 mb-6 text-xs text-slate-500 leading-relaxed">
+                    {result.disclaimer}
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between pt-6 border-t border-white/10">
                   <button 
