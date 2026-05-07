@@ -137,6 +137,13 @@ export default function HomePage() {
     { value: '<2s', label: t('stat.responseTime'), icon: Clock },
   ]
 
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (isLoaded && !isLoggedIn) {
+      router.push('/login')
+    }
+  }, [isLoaded, isLoggedIn, router])
+
   if (!isLoaded || !isLoggedIn) {
     return (
       <div className="min-h-screen bg-[#050a18] flex items-center justify-center">
