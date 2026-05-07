@@ -39,6 +39,7 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: str
     password: str
+    role: str = ""  # Selected role tab - used for cross-role validation
 
 class PatientCreate(BaseModel):
     name: str
@@ -109,6 +110,14 @@ async def login(req: LoginRequest):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
     user = result.data[0]
+    
+    # STRICT ROLE CHECK: prevent cross-role login
+    if req.role and user.get("role") and user["role"] != req.role:
+        raise HTTPException(
+            status_code=403,
+            detail=f"This account is registered as a {user['role']}, not a {req.role}. Please select the correct role tab."
+        )
+    
     token = secrets.token_hex(32)
     
     # Update token

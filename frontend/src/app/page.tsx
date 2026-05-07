@@ -207,28 +207,15 @@ export default function HomePage() {
                 <BarChart3 className="w-4 h-4" />
                 <span className="hidden sm:inline">{t('nav.accuracy')}</span>
               </button>
-              <button
-                onClick={() => {
-                  if (isLoggedIn) {
-                    if (role === 'patient') router.push('/symptom-checker')
-                    else if (role === 'receptionist') router.push('/appointments')
-                    else router.push('/patients')
-                  } else {
-                    router.push('/login')
-                  }
-                }}
-                className="flex items-center gap-2 px-4 py-2.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 rounded-xl text-sm font-semibold transition-all border border-purple-500/20 hover:border-purple-500/40"
-              >
-                <LogIn className="w-4 h-4" />
-                <span className="hidden sm:inline">
-                  {isLoggedIn ? (
-                    <span className="flex items-center gap-1.5">
-                      {user?.name?.split(' ')[0]}
-                      <span className="px-1.5 py-0.5 text-[10px] rounded-md bg-purple-500/20 text-purple-300 uppercase font-bold">{role}</span>
-                    </span>
-                  ) : t('nav.login')}
-                </span>
-              </button>
+              {!isLoggedIn && (
+                <button
+                  onClick={() => router.push('/login')}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 rounded-xl text-sm font-semibold transition-all border border-purple-500/20 hover:border-purple-500/40"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span className="hidden sm:inline">{t('nav.login')}</span>
+                </button>
+              )}
               {isLoggedIn && (
                 <button
                   onClick={() => { logout(); router.push('/') }}
