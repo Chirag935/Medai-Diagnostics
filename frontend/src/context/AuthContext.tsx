@@ -57,6 +57,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoaded, setIsLoaded] = useState(false)
 
   useEffect(() => {
+    // If this is a brand-new browser session (no sessionStorage flag),
+    // clear old login tokens so user must log in again.
+    const sessionActive = sessionStorage.getItem('medai_session_active')
+    if (!sessionActive) {
+      localStorage.removeItem('medai_token')
+      localStorage.removeItem('medai_user')
+      localStorage.removeItem('medai_doctor')
+      setIsLoaded(true)
+      return
+    }
+
     const savedToken = localStorage.getItem('medai_token')
     const savedUser = localStorage.getItem('medai_user')
     if (savedToken && savedUser) {
@@ -89,8 +100,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(userData)
     localStorage.setItem('medai_token', data.token)
     localStorage.setItem('medai_user', JSON.stringify(userData))
-    // Keep backward compat
     localStorage.setItem('medai_doctor', JSON.stringify(userData))
+    sessionStorage.setItem('medai_session_active', 'true')
   }
 
   const register = async (formData: any) => {
@@ -117,6 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('medai_token', data.token)
     localStorage.setItem('medai_user', JSON.stringify(userData))
     localStorage.setItem('medai_doctor', JSON.stringify(userData))
+    sessionStorage.setItem('medai_session_active', 'true')
   }
 
   const logout = () => {
