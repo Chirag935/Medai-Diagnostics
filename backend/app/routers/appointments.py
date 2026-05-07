@@ -190,6 +190,20 @@ async def create_appointment_request(req: AppointmentRequestCreate, token: str):
     
     if not result.data:
         raise HTTPException(status_code=500, detail="Failed to submit request")
+        
+    # Auto-add patient to Patient Management System if not exists
+    try:
+        existing_patient = sb.table("patients").select("id").eq("name", user["name"]).execute()
+        if not existing_patient.data:
+            sb.table("patients").insert({
+                "name": user["name"],
+                "phone": user.get("phone", ""),
+                "allergies": "Not specified",
+                "blood_group": "Unknown"
+            }).execute()
+    except Exception as e:
+        print(f"Warning: Failed to auto-add patient to management system: {e}")
+        
     return result.data[0]
 
 
