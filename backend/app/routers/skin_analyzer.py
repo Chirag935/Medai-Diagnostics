@@ -1,5 +1,7 @@
 from fastapi import APIRouter, File, UploadFile, HTTPException
 import traceback
+import os
+import json
 from PIL import Image
 import io
 import numpy as np
@@ -7,6 +9,85 @@ import cv2
 import base64
 
 router = APIRouter()
+
+# ---------------------------------------------------------------------------
+# Optional real CNN backend (HAM10000 / MobileNetV2). Falls back to OpenCV.
+# ---------------------------------------------------------------------------
+_CNN_MODEL = None
+_CNN_META: dict = {}
+_CNN_INIT_TRIED = False
+_MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "models")
+
+
+def _try_load_cnn():
+    """Lazy-load the real Keras model if available. Returns (model, meta) or (None, {})."""
+    global _CNN_MODEL, _CNN_META, _CNN_INIT_TRIED
+    if _CNN_INIT_TRIED:
+        return _CNN_MODEL, _CNN_META
+    _CNN_INIT_TRIED = True
+
+    h5 = os.path.join(_MODELS_DIR, "skin_disease_model.h5")
+    meta = os.path.join(_MODELS_DIR, "skin_disease_metadata.json")
+    if not (os.path.exists(h5) and os.path.getsize(h5) > 1024):
+        return None, {}
+    try:
+        with open(meta, "r") as f:
+            meta_json = json.load(f)
+        # Accept any trained transfer-learning backbone (mobilenetv2, efficientnetb0, ...)
+        if not str(meta_json.get("engine", "")).endswith("_transfer_learning"):
+            return None, {}
+        # Defer TF import so OpenCV-only mode never pays the cost
+        from tensorflow.keras.models import load_model  # type: ignore
+        _CNN_MODEL = load_model(h5)
+        _CNN_META = meta_json
+        print(f"[skin_analyzer] Loaded {meta_json.get('backbone', 'CNN')} HAM10000 model.")
+        return _CNN_MODEL, _CNN_META
+    except Exception as e:
+        print(f"[skin_analyzer] CNN load failed, using OpenCV fallback: {e}")
+        return None, {}
+
+
+def _get_preprocess_fn(meta: dict):
+    """Pick the right Keras preprocess_input based on training metadata."""
+    name = (meta or {}).get("preprocessing", "")
+    if "efficientnet" in name:
+        from tensorflow.keras.applications.efficientnet import preprocess_input  # type: ignore
+        return preprocess_input
+    # Default to mobilenet_v2 for backward compatibility
+    from tensorflow.keras.applications.mobilenet_v2 import preprocess_input  # type: ignore
+    return preprocess_input
+
+
+def _cnn_predict(cv_image: np.ndarray):
+    """Run the real CNN. cv_image is BGR. Returns dict or None on failure."""
+    model, meta = _try_load_cnn()
+    if model is None:
+        return None
+    try:
+        preprocess_input = _get_preprocess_fn(meta)
+        size = meta.get("input_shape", [224, 224, 3])[0]
+        rgb = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
+        resized = cv2.resize(rgb, (size, size)).astype(np.float32)
+        x = preprocess_input(np.expand_dims(resized, 0))
+        probs = model.predict(x, verbose=0)[0]
+        idx = int(np.argmax(probs))
+        classes = meta.get("classes", [])
+        labels = meta.get("class_labels", {})
+        cls = classes[idx] if idx < len(classes) else f"class_{idx}"
+        backbone = meta.get("backbone", "CNN").lower()
+        return {
+            "prediction": labels.get(cls, cls),
+            "confidence": round(float(probs[idx]), 4),
+            "class_code": cls,
+            "probabilities": {
+                labels.get(c, c): round(float(probs[i]), 4)
+                for i, c in enumerate(classes)
+            },
+            "engine": f"{backbone}_ham10000",
+        }
+    except Exception as e:
+        print(f"[skin_analyzer] CNN inference failed: {e}")
+        return None
 
 
 def generate_xai_heatmap(cv_image: np.ndarray, gray: np.ndarray, hsv: np.ndarray) -> str:
@@ -100,6 +181,45 @@ async def predict_skin(file: UploadFile = File(...)):
             "dark_spot_ratio": round(float(dark_spots), 4),
         }
 
+        # --- Try real CNN first; fall back to OpenCV heuristic ---
+        cnn_result = _cnn_predict(cv_image)
+        if cnn_result is not None:
+            prediction = cnn_result["prediction"]
+            confidence = cnn_result["confidence"]
+            cls = cnn_result.get("class_code", "")
+            # Map class to severity / advice
+            high_risk = {"mel", "bcc", "akiec"}
+            moderate = {"bkl", "df", "vasc"}
+            if cls in high_risk:
+                severity = "High - Consult a dermatologist immediately."
+                recommendation = (
+                    f"AI flagged possible {prediction}. This class can be malignant or "
+                    "pre-cancerous. Please get a professional dermoscopic examination."
+                )
+            elif cls in moderate:
+                severity = "Moderate"
+                recommendation = (
+                    f"AI suggests {prediction}. Usually benign but monitor for changes "
+                    "in size, color, or shape and consult a doctor if any occur."
+                )
+            else:  # nv
+                severity = "Low"
+                recommendation = (
+                    f"AI suggests {prediction} (a common mole). Generally benign — apply "
+                    "the ABCDE rule (Asymmetry, Border, Color, Diameter, Evolution)."
+                )
+            heatmap_b64 = generate_xai_heatmap(cv_image, gray, hsv)
+            return {
+                "prediction": prediction,
+                "confidence": round(confidence, 4),
+                "severity": severity,
+                "recommendation": recommendation,
+                "heatmap": heatmap_b64,
+                "features": features_detected,
+                "probabilities": cnn_result.get("probabilities", {}),
+                "engine": cnn_result.get("engine", "mobilenetv2_ham10000"),
+            }
+
         if dark_spots > 0.05 and edge_density > 0.02:
             prediction = "Possible Melanoma / Pigmentation"
             confidence = min(0.70 + float(dark_spots) * 2.0, 0.98)
@@ -133,6 +253,7 @@ async def predict_skin(file: UploadFile = File(...)):
             "recommendation": recommendation,
             "heatmap": heatmap_b64,
             "features": features_detected,
+            "engine": "opencv_heuristic",
         }
     except Exception as e:
         traceback.print_exc()

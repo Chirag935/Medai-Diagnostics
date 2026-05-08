@@ -45,6 +45,13 @@ if not exist ".venv311\Scripts\python.exe" (
     )
 ) else (
     call .venv311\Scripts\activate.bat
+    REM Sync dependencies in case requirements.txt was updated since last run.
+    REM Idempotent: pip skips already-satisfied packages quickly.
+    echo       Syncing backend dependencies...
+    pip install -q -r backend\requirements.txt
+    if errorlevel 1 (
+        echo [WARN] Dependency sync had issues - continuing anyway.
+    )
 )
 echo       Backend environment ready
 

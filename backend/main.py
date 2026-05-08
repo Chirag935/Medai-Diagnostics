@@ -1,14 +1,26 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 import uvicorn
 import os
+import time
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
 
+# --- Rate Limiting (slowapi) ---
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+limiter = Limiter(key_func=get_remote_address, default_limits=["120/minute"])
+
 from app.routers import symptom_checker, skin_analyzer, metrics, chat, feedback, patients, appointments
+
+# Track service start time for /health
+_START_TIME = time.time()
 
 app = FastAPI(
     title="MedAI Diagnostics API",
@@ -17,6 +29,10 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+# Wire rate limiter into app
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Configure CORS
 app.add_middleware(
@@ -59,8 +75,27 @@ async def root():
     }
 
 @app.get("/health")
-async def health_check():
-    return {"status": "healthy", "service": "MedAI Diagnostics API", "cors": "enabled"}
+@limiter.limit("60/minute")
+async def health_check(request: Request):
+    """Lightweight health probe for Render / uptime monitors."""
+    skin_meta = os.path.exists(os.path.join("models", "skin_disease_metadata.json"))
+    symptom_pkl = os.path.exists(os.path.join("models", "symptom_disease_model.pkl"))
+    skin_h5 = os.path.join("models", "skin_disease_model.h5")
+    skin_model_real = os.path.exists(skin_h5) and os.path.getsize(skin_h5) > 1024  # >1KB = real, not placeholder
+
+    return {
+        "status": "healthy",
+        "service": "MedAI Diagnostics API",
+        "version": "1.0.0",
+        "uptime_seconds": int(time.time() - _START_TIME),
+        "models": {
+            "symptom_rf": "loaded" if symptom_pkl else "missing",
+            "skin_cnn": "loaded" if skin_model_real else "fallback_opencv",
+            "skin_metadata": "loaded" if skin_meta else "missing",
+        },
+        "supabase": "configured" if os.getenv("SUPABASE_URL") else "not_configured",
+        "groq_llm": "configured" if os.getenv("GROQ_API_KEY") else "not_configured",
+    }
 
 @app.options("/{path:path}")
 async def handle_options(path: str):

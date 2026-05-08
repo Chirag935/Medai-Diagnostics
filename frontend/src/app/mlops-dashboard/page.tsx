@@ -360,7 +360,7 @@ export default function MLOpsDashboard() {
         ) : (
           <div className="text-center py-32 text-red-400">
             <p className="text-lg font-semibold">Failed to load MLOps Dashboard</p>
-            <p className="text-sm text-slate-500 mt-2">Ensure the backend is running on localhost:8000</p>
+            <p className="text-sm text-slate-500 mt-2">Could not reach the backend. Please check your connection.</p>
           </div>
         )}
       </div>

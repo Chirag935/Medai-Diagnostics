@@ -20,7 +20,7 @@ interface Patient {
 
 export default function PatientsPage() {
   const router = useRouter()
-  const { token, isLoggedIn, doctor, logout } = useAuth()
+  const { token, isLoggedIn, doctor, logout, role } = useAuth()
   const { t } = useLanguage()
   const [patients, setPatients] = useState<Patient[]>([])
   const [search, setSearch] = useState('')
@@ -32,27 +32,33 @@ export default function PatientsPage() {
   useEffect(() => {
     if (!isLoggedIn) { router.push('/login'); return }
     fetchPatients()
-    fetchStats()
   }, [isLoggedIn])
+
+  const computeStats = (list: Patient[]) => {
+    const today = new Date().toISOString().slice(0, 10)
+    const todayCount = list.filter(p => (p.created_at || '').slice(0, 10) === today).length
+    setStats({
+      total_patients: list.length,
+      total_consultations: list.length,
+      today_consultations: todayCount,
+    })
+  }
 
   const fetchPatients = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/patients/patients?token=${token}`)
-      if (res.ok) setPatients(await res.json())
+      const res = await fetch(`${API_BASE_URL}/api/patients/list?token=${token}`)
+      if (res.ok) {
+        const data: Patient[] = await res.json()
+        setPatients(data)
+        computeStats(data)
+      }
     } catch (e) {} finally { setIsLoading(false) }
-  }
-
-  const fetchStats = async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/patients/stats?token=${token}`)
-      if (res.ok) setStats(await res.json())
-    } catch (e) {}
   }
 
   const addPatient = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      const res = await fetch(`${API_BASE_URL}/api/patients/patients?token=${token}`, {
+      const res = await fetch(`${API_BASE_URL}/api/patients/add?token=${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...form, age: form.age ? parseInt(form.age) : null }),
@@ -61,7 +67,6 @@ export default function PatientsPage() {
         setShowForm(false)
         setForm({ name: '', age: '', gender: 'Male', phone: '', blood_group: 'O+', allergies: '' })
         fetchPatients()
-        fetchStats()
       }
     } catch (e) {}
   }
@@ -89,17 +94,18 @@ export default function PatientsPage() {
                 <Users className="w-5 h-5 text-teal-400" />
                 {t('nav.patients')}
               </h1>
-              <p className="text-xs text-slate-400">{doctor?.name} — {doctor?.clinic_name || doctor?.specialization}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => router.push('/prescription')}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 rounded-xl text-sm font-medium border border-purple-500/20 transition-all"
-            >
-              <FileText className="w-4 h-4" />
-              {t('rx.title')}
-            </button>
+            {role === 'doctor' && (
+              <button
+                onClick={() => router.push('/prescription')}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 rounded-xl text-sm font-medium border border-purple-500/20 transition-all"
+              >
+                <FileText className="w-4 h-4" />
+                {t('rx.title')}
+              </button>
+            )}
             <button onClick={logout} className="text-sm text-red-400 hover:text-red-300 transition-colors">
               {t('auth.logout')}
             </button>
@@ -212,7 +218,7 @@ export default function PatientsPage() {
               <div
                 key={patient.id}
                 className="bg-[#0a1225] border border-white/[0.06] rounded-2xl p-5 hover:border-teal-500/20 hover:bg-[#0c1530] transition-all cursor-pointer group"
-                onClick={() => router.push(`/prescription?patient=${patient.id}&name=${encodeURIComponent(patient.name)}&age=${patient.age || ''}&gender=${patient.gender || ''}`)}
+                onClick={() => router.push(`/patients/${patient.id}`)}
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">

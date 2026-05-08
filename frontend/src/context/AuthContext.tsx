@@ -19,6 +19,7 @@ const MODULE_ACCESS: Record<string, UserRole[]> = {
   'symptom-checker': ['patient', 'doctor'],
   'skin-analyzer': ['patient', 'doctor'],
   'ai-assistant': ['patient', 'doctor'],
+  'medication-reminders': ['patient', 'doctor'],
   'patients': ['doctor', 'receptionist'],
   'appointments': ['receptionist', 'doctor', 'patient'],
   'prescription': ['doctor'],

@@ -79,7 +79,7 @@ export default function AIAssistant() {
     } catch (error) {
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: '⚠️ Could not reach the AI backend. Please ensure the backend server is running on localhost:8000.',
+        content: '⚠️ Could not reach the AI backend. Please check your connection or contact support if the issue persists.',
         timestamp: new Date().toLocaleTimeString(),
         mode: 'error',
       }])

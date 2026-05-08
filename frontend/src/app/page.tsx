@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Activity, Shield, Stethoscope, Search, Download, Camera, BarChart3, X, Bot, Cpu, Heart, Brain, Microscope, FileCheck, ChevronRight, Sparkles, Lock, Clock, Users, Globe, FileText, LogIn, CalendarClock, LogOut } from 'lucide-react'
+import { Activity, Shield, Stethoscope, Search, Download, Camera, BarChart3, X, Bot, Cpu, Heart, Brain, Microscope, FileCheck, ChevronRight, Sparkles, Lock, Clock, Users, Globe, FileText, LogIn, CalendarClock, LogOut, Pill } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { API } from '@/lib/api-config'
 import { useLanguage } from '@/context/LanguageContext'
@@ -123,6 +123,16 @@ export default function HomePage() {
       shadow: 'shadow-sky-500/20',
       stats: 'Calendar',
     },
+    {
+      id: 'medication-reminders',
+      name: 'Medication Reminders',
+      icon: Pill,
+      tag: 'Smart Alerts',
+      description: 'Schedule medication reminders with browser notifications and adherence tracking.',
+      gradient: 'from-pink-500 to-rose-500',
+      shadow: 'shadow-pink-500/20',
+      stats: 'Local-First',
+    },
   ]
 
   // Filter modules by role
@@ -222,6 +232,17 @@ export default function HomePage() {
                   <LogIn className="w-4 h-4" />
                   <span className="hidden sm:inline">{t('nav.login')}</span>
                 </button>
+              )}
+              {isLoggedIn && user && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-slate-800/80 rounded-xl border border-white/10">
+                  <div className="w-7 h-7 bg-gradient-to-br from-teal-400 to-cyan-500 rounded-lg flex items-center justify-center text-white text-xs font-bold">
+                    {user.name?.charAt(0).toUpperCase() || '?'}
+                  </div>
+                  <div className="hidden sm:flex flex-col leading-tight">
+                    <span className="text-xs font-semibold text-white truncate max-w-[120px]">{user.name}</span>
+                    <span className="text-[10px] text-teal-300 uppercase tracking-wider">{role}</span>
+                  </div>
+                </div>
               )}
               {isLoggedIn && (
                 <button

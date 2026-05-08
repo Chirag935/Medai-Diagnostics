@@ -37,3 +37,9 @@ frontend/dist/
 
 # Models (generated at build time)
 models/mlops_feedback.db
+
+# Large datasets and model binaries (do not commit)
+backend/data/ham10000/
+backend/models/*.h5
+backend/models/*.pkl
+*.h5
